@@ -400,42 +400,60 @@ html, body {
 
 .console-clear:hover { color: var(--text); }
 
-/* ── Error panel ── */
+/* ── Panel group tabs ── */
 
-#panel-errors .panel-header { background: var(--error-bg); }
-#panel-errors .panel-title { color: var(--error); }
-
-#panel-errors .error-list {
-  flex: 1;
-  padding: 8px 10px;
-  overflow-y: auto;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--error);
+.group-tabs {
+  display: flex;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+  cursor: grab;
 }
 
-#panel-errors .error-list:empty::after {
-  content: 'No errors';
+.group-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 32px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
   color: var(--text-dim);
-  font-style: italic;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
 }
 
-.error-entry {
-  padding: 3px 0;
-  border-bottom: 1px solid rgba(243, 139, 168, 0.1);
-  white-space: pre-wrap;
-  word-break: break-word;
+.group-tab:hover { color: var(--text); }
+
+.group-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
-.error-count {
-  font-size: 10px;
-  background: var(--error);
-  color: var(--bg);
-  border-radius: 8px;
-  padding: 1px 6px;
-  margin-left: 6px;
-  font-weight: 700;
-  display: none;
+.group-tab-detach {
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-dim);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.group-tab:hover .group-tab-detach { opacity: 1; }
+.group-tab-detach:hover { color: var(--error); }
+
+/* ── Merge indicator ── */
+
+.panel.merge-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+  box-shadow: 0 0 30px rgba(137, 180, 250, 0.2);
 }
 
 /* ── Drag overlay ── */

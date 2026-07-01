@@ -6,8 +6,7 @@ var PANELS = [
   { id: 'panel-css',     title: 'CSS',     type: 'editor',  editorId: 'editor-css'  },
   { id: 'panel-js',      title: 'JS',      type: 'editor',  editorId: 'editor-js'   },
   { id: 'panel-preview', title: 'Preview', type: 'preview' },
-  { id: 'panel-console', title: 'Console', type: 'console' },
-  { id: 'panel-errors',  title: 'Errors',  type: 'errors'  }
+  { id: 'panel-console', title: 'Console', type: 'console' }
 ];
 
 var workspace   = document.getElementById('workspace');
@@ -30,6 +29,7 @@ function createPanel(def) {
   var el = document.createElement('div');
   el.className = 'panel';
   el.id = def.id;
+  el.setAttribute('data-panel-id', def.id);
 
   var header = document.createElement('div');
   header.className = 'panel-header';
@@ -55,18 +55,11 @@ function createPanel(def) {
     header.appendChild(clearBtn);
   }
 
-  if (def.type === 'errors') {
-    var badge = document.createElement('span');
-    badge.className = 'error-count';
-    badge.id = 'error-count';
-    badge.textContent = '0';
-    header.appendChild(badge);
-  }
-
   el.appendChild(header);
 
   var body = document.createElement('div');
   body.className = 'panel-body';
+  body.setAttribute('data-owner', def.id);
 
   if (def.type === 'editor') {
     var ta = document.createElement('textarea');
@@ -83,11 +76,6 @@ function createPanel(def) {
     consoleLog.className = 'console-log';
     consoleLog.id = 'console-log';
     body.appendChild(consoleLog);
-  } else if (def.type === 'errors') {
-    var list = document.createElement('div');
-    list.className = 'error-list';
-    list.id = 'error-list';
-    body.appendChild(list);
   }
 
   el.appendChild(body);
@@ -101,7 +89,10 @@ function createPanel(def) {
 
   workspace.appendChild(el);
 
-  el.addEventListener('mousedown', function() { focusPanel(def.id); });
+  el.addEventListener('mousedown', function() {
+    var hostId = getGroupHost(def.id);
+    focusPanel(hostId);
+  });
   initDrag(el, header);
   initResize(el);
 
@@ -113,32 +104,316 @@ function createPanel(def) {
    ═══════════════════════════════════════════ */
 function focusPanel(id) {
   Object.keys(panels).forEach(function(k) {
-    panels[k].el.classList.remove('focused');
+    var hostId = getGroupHost(k);
+    panels[hostId].el.classList.remove('focused');
   });
-  panels[id].el.classList.add('focused');
-  panels[id].el.style.zIndex = ++zCounter;
+  var hostId = getGroupHost(id);
+  panels[hostId].el.classList.add('focused');
+  panels[hostId].el.style.zIndex = ++zCounter;
+}
+
+/* ═══════════════════════════════════════════
+   Panel grouping system
+
+   Panels can be merged into tabbed groups.
+   The "host" panel keeps its position/size
+   and holds bodies of all grouped panels.
+   Grouped "guest" panels are hidden.
+   ═══════════════════════════════════════════ */
+var groups = {};
+
+function getGroupHost(panelId) {
+  var keys = Object.keys(groups);
+  for (var i = 0; i < keys.length; i++) {
+    if (groups[keys[i]].indexOf(panelId) >= 0) return keys[i];
+  }
+  return panelId;
+}
+
+function getGroupMembers(hostId) {
+  return groups[hostId] || [hostId];
+}
+
+function isGrouped(panelId) {
+  return !!groups[getGroupHost(panelId)];
+}
+
+function getPanelTitle(panelId) {
+  for (var i = 0; i < PANELS.length; i++) {
+    if (PANELS[i].id === panelId) return PANELS[i].title;
+  }
+  return panelId;
+}
+
+function groupPanels(hostId, guestId) {
+  if (hostId === guestId) return;
+
+  var existingHostOfGuest = getGroupHost(guestId);
+  if (existingHostOfGuest !== guestId) {
+    ungroupPanel(guestId);
+  }
+
+  var existingHostOfHost = getGroupHost(hostId);
+  if (existingHostOfHost !== hostId) {
+    hostId = existingHostOfHost;
+  }
+
+  if (!groups[hostId]) {
+    groups[hostId] = [hostId];
+  }
+
+  if (groups[guestId]) {
+    var guestMembers = groups[guestId].slice();
+    delete groups[guestId];
+    guestMembers.forEach(function(m) {
+      if (groups[hostId].indexOf(m) < 0) groups[hostId].push(m);
+    });
+  } else {
+    if (groups[hostId].indexOf(guestId) < 0) {
+      groups[hostId].push(guestId);
+    }
+  }
+
+  var hostEl = panels[hostId].el;
+  var members = groups[hostId];
+
+  members.forEach(function(id) {
+    if (id === hostId) return;
+    var guestBody = panels[id].el.querySelector('.panel-body');
+    hostEl.insertBefore(guestBody, hostEl.querySelector('.resize-handle'));
+    panels[id].el.style.display = 'none';
+  });
+
+  renderGroupTabs(hostId);
+  setGroupActiveTab(hostId, guestId);
+}
+
+function ungroupPanel(panelId) {
+  var hostId = getGroupHost(panelId);
+  if (!groups[hostId]) return;
+  if (hostId === panelId && groups[hostId].length <= 1) {
+    delete groups[hostId];
+    removeGroupTabs(hostId);
+    return;
+  }
+
+  if (panelId !== hostId) {
+    var guestBody = panels[hostId].el.querySelector('.panel-body[data-owner="' + panelId + '"]');
+    if (guestBody) {
+      var guestEl = panels[panelId].el;
+      guestEl.insertBefore(guestBody, guestEl.querySelector('.resize-handle'));
+    }
+
+    var idx = groups[hostId].indexOf(panelId);
+    if (idx >= 0) groups[hostId].splice(idx, 1);
+
+    var guestPanel = panels[panelId].el;
+    guestPanel.style.display = '';
+    var hostRect = panels[hostId].el;
+    guestPanel.style.left   = (hostRect.offsetLeft + 30) + 'px';
+    guestPanel.style.top    = (hostRect.offsetTop + 30) + 'px';
+    guestPanel.style.width  = hostRect.offsetWidth + 'px';
+    guestPanel.style.height = hostRect.offsetHeight + 'px';
+  } else {
+    var newHost = groups[hostId][1];
+    var oldMembers = groups[hostId].slice();
+    delete groups[hostId];
+
+    var oldHostBody = panels[hostId].el.querySelector('.panel-body[data-owner="' + hostId + '"]');
+
+    oldMembers.forEach(function(id) {
+      if (id === hostId) return;
+      var body = panels[hostId].el.querySelector('.panel-body[data-owner="' + id + '"]');
+      if (body) {
+        panels[id].el.insertBefore(body, panels[id].el.querySelector('.resize-handle'));
+      }
+      panels[id].el.style.display = '';
+      panels[id].el.style.left   = panels[hostId].el.style.left;
+      panels[id].el.style.top    = panels[hostId].el.style.top;
+      panels[id].el.style.width  = panels[hostId].el.style.width;
+      panels[id].el.style.height = panels[hostId].el.style.height;
+    });
+
+    if (oldMembers.length > 2) {
+      var remaining = oldMembers.filter(function(id) { return id !== hostId; });
+      var nh = remaining[0];
+      groups[nh] = remaining;
+      remaining.forEach(function(id) {
+        if (id === nh) return;
+        var body = panels[id].el.querySelector('.panel-body');
+        panels[nh].el.insertBefore(body, panels[nh].el.querySelector('.resize-handle'));
+        panels[id].el.style.display = 'none';
+      });
+      renderGroupTabs(nh);
+      setGroupActiveTab(nh, nh);
+    }
+
+    removeGroupTabs(hostId);
+    return;
+  }
+
+  if (groups[hostId].length <= 1) {
+    delete groups[hostId];
+    removeGroupTabs(hostId);
+  } else {
+    renderGroupTabs(hostId);
+    setGroupActiveTab(hostId, groups[hostId][0]);
+  }
+}
+
+function ungroupAll() {
+  Object.keys(groups).forEach(function(hostId) {
+    var members = groups[hostId].slice();
+    members.forEach(function(id) {
+      if (id !== hostId) {
+        var body = panels[hostId].el.querySelector('.panel-body[data-owner="' + id + '"]');
+        if (body) {
+          panels[id].el.insertBefore(body, panels[id].el.querySelector('.resize-handle'));
+        }
+        panels[id].el.style.display = '';
+      }
+    });
+    removeGroupTabs(hostId);
+  });
+  groups = {};
+}
+
+function renderGroupTabs(hostId) {
+  var hostEl = panels[hostId].el;
+  var existing = hostEl.querySelector('.group-tabs');
+  if (existing) existing.remove();
+
+  var members = groups[hostId];
+  if (!members || members.length <= 1) return;
+
+  hostEl.querySelector('.panel-header').style.display = 'none';
+
+  var tabBar = document.createElement('div');
+  tabBar.className = 'group-tabs';
+
+  members.forEach(function(id) {
+    var tab = document.createElement('div');
+    tab.className = 'group-tab';
+    tab.setAttribute('data-tab-id', id);
+
+    var label = document.createElement('span');
+    label.className = 'group-tab-label';
+    label.textContent = getPanelTitle(id);
+    tab.appendChild(label);
+
+    var detachBtn = document.createElement('span');
+    detachBtn.className = 'group-tab-detach';
+    detachBtn.textContent = '\u00d7';
+    detachBtn.title = 'Detach';
+    detachBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      ungroupPanel(id);
+    });
+    tab.appendChild(detachBtn);
+
+    tab.addEventListener('click', function() {
+      setGroupActiveTab(hostId, id);
+    });
+
+    tabBar.appendChild(tab);
+  });
+
+  hostEl.insertBefore(tabBar, hostEl.querySelector('.panel-body'));
+}
+
+function removeGroupTabs(hostId) {
+  var hostEl = panels[hostId].el;
+  var existing = hostEl.querySelector('.group-tabs');
+  if (existing) existing.remove();
+  hostEl.querySelector('.panel-header').style.display = '';
+
+  var bodies = hostEl.querySelectorAll('.panel-body');
+  bodies.forEach(function(b) { b.style.display = ''; });
+}
+
+function setGroupActiveTab(hostId, activeId) {
+  var hostEl = panels[hostId].el;
+  var members = groups[hostId];
+  if (!members) return;
+
+  var tabs = hostEl.querySelectorAll('.group-tab');
+  tabs.forEach(function(tab) {
+    tab.classList.toggle('active', tab.getAttribute('data-tab-id') === activeId);
+  });
+
+  var bodies = hostEl.querySelectorAll('.panel-body');
+  bodies.forEach(function(body) {
+    body.style.display = body.getAttribute('data-owner') === activeId ? '' : 'none';
+  });
+}
+
+/* ═══════════════════════════════════════════
+   Merge detection during drag
+
+   When hovering over another panel (not near
+   workspace edges), show a merge indicator.
+   On drop, group the panels together.
+   ═══════════════════════════════════════════ */
+var mergeTarget = null;
+
+function findMergeTarget(clientX, clientY, draggedEl) {
+  var wsRect = workspace.getBoundingClientRect();
+  var x = clientX - wsRect.left;
+  var y = clientY - wsRect.top;
+
+  if (x < SNAP_THRESHOLD || x > wsRect.width - SNAP_THRESHOLD ||
+      y < SNAP_THRESHOLD || y > wsRect.height - SNAP_THRESHOLD) {
+    return null;
+  }
+
+  var best = null;
+  var bestZ = -1;
+
+  Object.keys(panels).forEach(function(id) {
+    var el = panels[id].el;
+    if (el === draggedEl) return;
+    if (el.style.display === 'none') return;
+
+    var r = el.getBoundingClientRect();
+    if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
+      var z = parseInt(el.style.zIndex) || 0;
+      if (z > bestZ) {
+        bestZ = z;
+        best = id;
+      }
+    }
+  });
+
+  return best;
+}
+
+function showMergeIndicator(targetId) {
+  if (mergeTarget === targetId) return;
+
+  if (mergeTarget && panels[mergeTarget]) {
+    panels[mergeTarget].el.classList.remove('merge-target');
+  }
+
+  mergeTarget = targetId;
+
+  if (targetId && panels[targetId]) {
+    panels[targetId].el.classList.add('merge-target');
+  }
+}
+
+function clearMergeIndicator() {
+  if (mergeTarget && panels[mergeTarget]) {
+    panels[mergeTarget].el.classList.remove('merge-target');
+  }
+  mergeTarget = null;
 }
 
 /* ═══════════════════════════════════════════
    Snap zones: smart edge snapping
-
-   Tracks which panels are docked to which
-   regions. When a new panel snaps to an edge
-   that's already occupied, it subdivides the
-   space instead of overlapping.
    ═══════════════════════════════════════════ */
 var snapPreview    = document.getElementById('snap-preview');
 var SNAP_THRESHOLD = 20;
 var dockedPanels   = {};
-
-function getPanelRect(el) {
-  return {
-    x: el.offsetLeft,
-    y: el.offsetTop,
-    w: el.offsetWidth,
-    h: el.offsetHeight
-  };
-}
 
 function rectsOverlap(a, b) {
   var tolerance = 8;
@@ -204,16 +479,9 @@ function subdivide(zone, occupied, cursorX, cursorY) {
       if (center < midX) leftOccupied = true;
       else rightOccupied = true;
     });
-
-    if (leftOccupied && !rightOccupied) {
-      return { x: midX, y: zone.y, w: zone.w / 2, h: zone.h };
-    }
-    if (rightOccupied && !leftOccupied) {
-      return { x: zone.x, y: zone.y, w: zone.w / 2, h: zone.h };
-    }
-    if (cursorX < midX) {
-      return { x: zone.x, y: zone.y, w: zone.w / 2, h: zone.h };
-    }
+    if (leftOccupied && !rightOccupied) return { x: midX, y: zone.y, w: zone.w / 2, h: zone.h };
+    if (rightOccupied && !leftOccupied) return { x: zone.x, y: zone.y, w: zone.w / 2, h: zone.h };
+    if (cursorX < midX) return { x: zone.x, y: zone.y, w: zone.w / 2, h: zone.h };
     return { x: midX, y: zone.y, w: zone.w / 2, h: zone.h };
   }
 
@@ -224,16 +492,9 @@ function subdivide(zone, occupied, cursorX, cursorY) {
     if (center < midY) topOccupied = true;
     else bottomOccupied = true;
   });
-
-  if (topOccupied && !bottomOccupied) {
-    return { x: zone.x, y: midY, w: zone.w, h: zone.h / 2 };
-  }
-  if (bottomOccupied && !topOccupied) {
-    return { x: zone.x, y: zone.y, w: zone.w, h: zone.h / 2 };
-  }
-  if (cursorY < midY) {
-    return { x: zone.x, y: zone.y, w: zone.w, h: zone.h / 2 };
-  }
+  if (topOccupied && !bottomOccupied) return { x: zone.x, y: midY, w: zone.w, h: zone.h / 2 };
+  if (bottomOccupied && !topOccupied) return { x: zone.x, y: zone.y, w: zone.w, h: zone.h / 2 };
+  if (cursorY < midY) return { x: zone.x, y: zone.y, w: zone.w, h: zone.h / 2 };
   return { x: zone.x, y: midY, w: zone.w, h: zone.h / 2 };
 }
 
@@ -265,34 +526,58 @@ function initDrag(el, header) {
 
   header.addEventListener('mousedown', function(e) {
     if (e.target.closest('.resize-handle')) return;
+    if (e.target.closest('.console-clear')) return;
+    if (e.target.closest('.group-tab-detach')) return;
     e.preventDefault();
+
+    var panelId = el.id;
+    var hostId = getGroupHost(panelId);
+    var actualEl = panels[hostId].el;
+
     startX = e.clientX;
     startY = e.clientY;
-    origX = el.offsetLeft;
-    origY = el.offsetTop;
+    origX = actualEl.offsetLeft;
+    origY = actualEl.offsetTop;
 
-    undockPanel(el);
-    el.classList.add('dragging');
+    undockPanel(actualEl);
+    actualEl.classList.add('dragging');
 
     dragOverlay.style.display = 'block';
     dragOverlay.style.cursor = 'grabbing';
 
     function onMove(e) {
-      el.style.left = (origX + e.clientX - startX) + 'px';
-      el.style.top  = (origY + e.clientY - startY) + 'px';
-      showSnapPreview(getSnapZone(e.clientX, e.clientY, el));
+      actualEl.style.left = (origX + e.clientX - startX) + 'px';
+      actualEl.style.top  = (origY + e.clientY - startY) + 'px';
+
+      var snap = getSnapZone(e.clientX, e.clientY, actualEl);
+      if (snap) {
+        showSnapPreview(snap);
+        clearMergeIndicator();
+      } else {
+        showSnapPreview(null);
+        var target = findMergeTarget(e.clientX, e.clientY, actualEl);
+        showMergeIndicator(target);
+      }
     }
 
     function onUp(e) {
-      el.classList.remove('dragging');
-      var zone = getSnapZone(e.clientX, e.clientY, el);
-      if (zone) {
-        el.style.left   = zone.x + 'px';
-        el.style.top    = zone.y + 'px';
-        el.style.width  = zone.w + 'px';
-        el.style.height = zone.h + 'px';
-        dockPanel(el, zone);
+      actualEl.classList.remove('dragging');
+
+      var snap = getSnapZone(e.clientX, e.clientY, actualEl);
+      if (snap) {
+        actualEl.style.left   = snap.x + 'px';
+        actualEl.style.top    = snap.y + 'px';
+        actualEl.style.width  = snap.w + 'px';
+        actualEl.style.height = snap.h + 'px';
+        dockPanel(actualEl, snap);
+      } else {
+        var target = findMergeTarget(e.clientX, e.clientY, actualEl);
+        if (target) {
+          groupPanels(target, hostId);
+        }
       }
+
+      clearMergeIndicator();
       snapPreview.style.display = 'none';
       dragOverlay.style.display = 'none';
       dragOverlay.style.cursor = '';
@@ -337,16 +622,13 @@ function initResize(el) {
       function onMove(e) {
         var dx = e.clientX - startX;
         var dy = e.clientY - startY;
-
         if (resizeR) el.style.width  = Math.max(MIN_W, origW + dx) + 'px';
         if (resizeB) el.style.height = Math.max(MIN_H, origH + dy) + 'px';
-
         if (resizeL) {
           var newW = Math.max(MIN_W, origW - dx);
           el.style.width = newW + 'px';
           el.style.left  = (origL + origW - newW) + 'px';
         }
-
         if (resizeT) {
           var newH = Math.max(MIN_H, origH - dy);
           el.style.height = newH + 'px';
@@ -375,7 +657,8 @@ function initResize(el) {
 function saveLayout() {
   var layout = {};
   Object.keys(panels).forEach(function(id) {
-    var el = panels[id].el;
+    var hostId = getGroupHost(id);
+    var el = panels[hostId].el;
     layout[id] = {
       x: el.offsetLeft,
       y: el.offsetTop,
@@ -398,6 +681,7 @@ function applyLayout(layout) {
   Object.keys(layout).forEach(function(id) {
     if (!panels[id]) return;
     var el = panels[id].el;
+    if (el.style.display === 'none') return;
     var r  = layout[id];
     el.style.left   = r.x + 'px';
     el.style.top    = r.y + 'px';
@@ -418,17 +702,16 @@ function layoutTopBottom() {
   var h = workspace.offsetHeight;
   var edW = Math.floor(w / 3);
   var edH = Math.floor(h * 0.45);
-  var pvW = Math.floor(w * 0.5);
+  var pvW = Math.floor(w * 0.6);
   var btmH = h - edH - 4;
-  var sideW = Math.floor((w - pvW - 8) / 2);
+  var conW = w - pvW - 4;
 
   return {
-    'panel-html':    { x: 0,                    y: 0,       w: edW,          h: edH },
-    'panel-css':     { x: edW,                  y: 0,       w: edW,          h: edH },
-    'panel-js':      { x: edW * 2,              y: 0,       w: w - edW * 2,  h: edH },
-    'panel-preview': { x: 0,                    y: edH + 4, w: pvW,          h: btmH },
-    'panel-console': { x: pvW + 4,              y: edH + 4, w: sideW,        h: btmH },
-    'panel-errors':  { x: pvW + sideW + 8,      y: edH + 4, w: w - pvW - sideW - 8, h: btmH }
+    'panel-html':    { x: 0,       y: 0,       w: edW,          h: edH },
+    'panel-css':     { x: edW,     y: 0,       w: edW,          h: edH },
+    'panel-js':      { x: edW * 2, y: 0,       w: w - edW * 2,  h: edH },
+    'panel-preview': { x: 0,       y: edH + 4, w: pvW,          h: btmH },
+    'panel-console': { x: pvW + 4, y: edH + 4, w: conW,         h: btmH }
   };
 }
 
@@ -438,17 +721,15 @@ function layoutLeftRight() {
   var edW = Math.floor(w * 0.3);
   var edH = Math.floor(h / 3);
   var rightW = w - edW - 4;
-  var pvH = Math.floor(h * 0.55);
-  var btmH = h - pvH - 4;
-  var halfRight = Math.floor(rightW / 2);
+  var pvH = Math.floor(h * 0.6);
+  var conH = h - pvH - 4;
 
   return {
-    'panel-html':    { x: 0,               y: 0,           w: edW,      h: edH },
-    'panel-css':     { x: 0,               y: edH,         w: edW,      h: edH },
-    'panel-js':      { x: 0,               y: edH * 2,     w: edW,      h: h - edH * 2 },
-    'panel-preview': { x: edW + 4,         y: 0,           w: rightW,   h: pvH },
-    'panel-console': { x: edW + 4,         y: pvH + 4,     w: halfRight, h: btmH },
-    'panel-errors':  { x: edW + halfRight + 8, y: pvH + 4, w: rightW - halfRight - 4, h: btmH }
+    'panel-html':    { x: 0,       y: 0,       w: edW,    h: edH },
+    'panel-css':     { x: 0,       y: edH,     w: edW,    h: edH },
+    'panel-js':      { x: 0,       y: edH * 2, w: edW,    h: h - edH * 2 },
+    'panel-preview': { x: edW + 4, y: 0,       w: rightW, h: pvH },
+    'panel-console': { x: edW + 4, y: pvH + 4, w: rightW, h: conH }
   };
 }
 
@@ -457,17 +738,14 @@ function layoutTabs() {
   var h = workspace.offsetHeight;
   var tabH = 32;
   var edH = Math.floor((h - tabH) * 0.4);
-  var pvW = Math.floor(w * 0.5);
   var btmH = h - tabH - edH - 4;
-  var sideW = Math.floor((w - pvW - 8) / 2);
 
   return {
-    'panel-html':    { x: 0, y: tabH,           w: w,   h: edH },
-    'panel-css':     { x: 0, y: tabH,           w: w,   h: edH },
-    'panel-js':      { x: 0, y: tabH,           w: w,   h: edH },
-    'panel-preview': { x: 0, y: tabH + edH + 4, w: pvW, h: btmH },
-    'panel-console': { x: pvW + 4, y: tabH + edH + 4, w: sideW, h: btmH },
-    'panel-errors':  { x: pvW + sideW + 8, y: tabH + edH + 4, w: w - pvW - sideW - 8, h: btmH }
+    'panel-html':    { x: 0, y: tabH,           w: w, h: edH },
+    'panel-css':     { x: 0, y: tabH,           w: w, h: edH },
+    'panel-js':      { x: 0, y: tabH,           w: w, h: edH },
+    'panel-preview': { x: 0, y: tabH + edH + 4, w: w, h: btmH },
+    'panel-console': { x: 0, y: tabH + edH + 4, w: w, h: btmH }
   };
 }
 
@@ -502,7 +780,7 @@ function setActiveTab(tabId) {
 }
 
 function restoreAllPanelsVisible() {
-  ['panel-html', 'panel-css', 'panel-js', 'panel-preview', 'panel-console', 'panel-errors'].forEach(function(id) {
+  ['panel-html', 'panel-css', 'panel-js', 'panel-preview', 'panel-console'].forEach(function(id) {
     if (!panels[id]) return;
     panels[id].el.style.display = '';
   });
@@ -512,22 +790,23 @@ function switchLayout(mode) {
   currentLayoutMode = mode;
   dockedPanels = {};
 
+  ungroupAll();
+
   var layoutBtns = document.querySelectorAll('.layout-btn');
   layoutBtns.forEach(function(btn) {
     btn.classList.toggle('active', btn.getAttribute('data-layout') === mode);
   });
 
+  restoreAllPanelsVisible();
+  var preset = getPresetLayout(mode);
+  applyLayout(preset);
+
   if (mode === 'tabs') {
     showTabBar(true);
-    var preset = getPresetLayout(mode);
-    restoreAllPanelsVisible();
-    applyLayout(preset);
     setActiveTab(activeTab);
+    groupPanels('panel-preview', 'panel-console');
   } else {
     showTabBar(false);
-    restoreAllPanelsVisible();
-    var preset = getPresetLayout(mode);
-    applyLayout(preset);
   }
 
   try { localStorage.setItem('css-sandbox-layout-mode', mode); } catch(e) {}
@@ -572,17 +851,13 @@ if (savedLayout) {
 if (currentLayoutMode === 'tabs') {
   showTabBar(true);
   setActiveTab(activeTab);
+  groupPanels('panel-preview', 'panel-console');
 }
 
 focusPanel('panel-preview');
 
 /* ═══════════════════════════════════════════
    URL hash encoding/decoding
-
-   Uses LZString for ~60-80% shorter URLs.
-   Backward compatible: detects old base64
-   format (starts with "ey" after decode
-   attempt) vs LZ format.
    ═══════════════════════════════════════════ */
 function encodeState(html, css, js) {
   var json = JSON.stringify({ html: html, css: css, js: js });
@@ -626,8 +901,6 @@ var editorHTML = document.getElementById('editor-html');
 var editorCSS  = document.getElementById('editor-css');
 var editorJS   = document.getElementById('editor-js');
 var preview    = document.getElementById('preview');
-var errorList    = document.getElementById('error-list');
-var errorCount   = document.getElementById('error-count');
 var consoleLog   = document.getElementById('console-log');
 var consoleBadge = document.getElementById('console-badge');
 
@@ -682,16 +955,10 @@ var hlJS   = Highlight.createEditor(editorJS,   'js');
 /* ═══════════════════════════════════════════
    Run: build and inject preview
    ═══════════════════════════════════════════ */
-var errorMessages = [];
-
 function run() {
   var html = editorHTML.value;
   var css  = editorCSS.value;
   var js   = editorJS.value;
-
-  errorMessages = [];
-  errorList.innerHTML = '';
-  errorCount.style.display = 'none';
 
   consoleMessages = [];
   consoleLog.innerHTML = '';
@@ -791,17 +1058,7 @@ window.addEventListener('message', function(e) {
   }
 
   if (e.data.type === 'iframe-error') {
-    var msg = e.data.message;
-    if (e.data.line) msg += ' (line ' + e.data.line + ')';
-    errorMessages.push(msg);
-
-    var entry = document.createElement('div');
-    entry.className = 'error-entry';
-    entry.textContent = msg;
-    errorList.appendChild(entry);
-
-    errorCount.textContent = errorMessages.length;
-    errorCount.style.display = 'inline';
+    addConsoleEntry('error', e.data.message + (e.data.line ? ' (line ' + e.data.line + ')' : ''));
   }
 });
 
