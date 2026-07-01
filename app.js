@@ -1097,6 +1097,20 @@ editorCSS.addEventListener('keydown', handleTab);
 editorJS.addEventListener('keydown', handleTab);
 
 /* ═══════════════════════════════════════════
+   New button: reset editors to defaults
+   ═══════════════════════════════════════════ */
+document.getElementById('btn-new').addEventListener('click', function() {
+  editorHTML.value = DEFAULT_HTML;
+  editorCSS.value  = DEFAULT_CSS;
+  editorJS.value   = DEFAULT_JS;
+  hlHTML.update();
+  hlCSS.update();
+  hlJS.update();
+  history.replaceState(null, '', location.pathname);
+  run();
+});
+
+/* ═══════════════════════════════════════════
    Reset layout button
    ═══════════════════════════════════════════ */
 document.getElementById('btn-reset').addEventListener('click', function() {
