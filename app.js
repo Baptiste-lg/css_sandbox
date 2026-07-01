@@ -14,6 +14,8 @@ var dragOverlay = document.getElementById('drag-overlay');
 var autoRunCb   = document.getElementById('auto-run');
 var zCounter    = 100;
 var panels      = {};
+var extCSS      = [];
+var extJS       = [];
 
 /* ═══════════════════════════════════════════
    Default layout: delegates to current mode
@@ -860,8 +862,10 @@ focusPanel('panel-preview');
    URL hash encoding/decoding
    ═══════════════════════════════════════════ */
 function encodeState(html, css, js) {
-  var json = JSON.stringify({ html: html, css: css, js: js });
-  return LZString.compressToEncodedURIComponent(json);
+  var state = { html: html, css: css, js: js };
+  if (extCSS.length) state.extCss = extCSS;
+  if (extJS.length) state.extJs = extJS;
+  return LZString.compressToEncodedURIComponent(JSON.stringify(state));
 }
 
 function decodeState(hash) {
@@ -945,6 +949,9 @@ editorHTML.value = restored ? restored.html : DEFAULT_HTML;
 editorCSS.value  = restored ? restored.css  : DEFAULT_CSS;
 editorJS.value   = restored ? restored.js   : DEFAULT_JS;
 
+if (restored && restored.extCss) extCSS = restored.extCss;
+if (restored && restored.extJs)  extJS  = restored.extJs;
+
 /* ═══════════════════════════════════════════
    Initialize syntax highlighting
    ═══════════════════════════════════════════ */
@@ -964,12 +971,21 @@ function run() {
   consoleLog.innerHTML = '';
   consoleBadge.style.display = 'none';
 
+  var extCssLinks = extCSS.map(function(url) {
+    return '<link rel="stylesheet" href="' + url.replace(/"/g, '&quot;') + '">';
+  }).join('\n');
+  var extJsTags = extJS.map(function(url) {
+    return '<script src="' + url.replace(/"/g, '&quot;') + '"><\/script>';
+  }).join('\n');
+
   var doc = [
     '<!DOCTYPE html>',
     '<html><head><meta charset="UTF-8">',
+    extCssLinks,
     '<style>' + css + '<\/style>',
     '<\/head><body>',
     html,
+    extJsTags,
     '<script>',
     '(function() {',
     '  var methods = ["log", "warn", "error", "info"];',
@@ -1103,6 +1119,8 @@ document.getElementById('btn-new').addEventListener('click', function() {
   editorHTML.value = DEFAULT_HTML;
   editorCSS.value  = DEFAULT_CSS;
   editorJS.value   = DEFAULT_JS;
+  extCSS = [];
+  extJS  = [];
   hlHTML.update();
   hlCSS.update();
   hlJS.update();
@@ -1117,6 +1135,79 @@ document.getElementById('btn-reset').addEventListener('click', function() {
   try { localStorage.removeItem('css-sandbox-layout'); } catch(e) {}
   dockedPanels = {};
   switchLayout(currentLayoutMode);
+});
+
+/* ═══════════════════════════════════════════
+   Settings modal: external resources
+   ═══════════════════════════════════════════ */
+var settingsModal = document.getElementById('settings-modal');
+var extCssInput   = document.getElementById('ext-css');
+var extJsInput    = document.getElementById('ext-js');
+
+function parseLines(str) {
+  return str.split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
+}
+
+function openSettings() {
+  extCssInput.value = extCSS.join('\n');
+  extJsInput.value  = extJS.join('\n');
+  updatePresetButtons();
+  settingsModal.classList.remove('hidden');
+}
+
+function closeSettings() {
+  settingsModal.classList.add('hidden');
+}
+
+function updatePresetButtons() {
+  var allUrls = extCSS.concat(extJS);
+  document.querySelectorAll('.preset-btn').forEach(function(btn) {
+    var urls = [btn.getAttribute('data-css'), btn.getAttribute('data-js')].filter(Boolean);
+    var active = urls.every(function(u) { return allUrls.indexOf(u) >= 0; });
+    btn.classList.toggle('active', active);
+  });
+}
+
+document.getElementById('btn-settings').addEventListener('click', openSettings);
+document.getElementById('settings-close').addEventListener('click', closeSettings);
+document.getElementById('settings-apply').addEventListener('click', function() {
+  extCSS = parseLines(extCssInput.value);
+  extJS  = parseLines(extJsInput.value);
+  closeSettings();
+  run();
+});
+
+settingsModal.addEventListener('click', function(e) {
+  if (e.target === settingsModal) closeSettings();
+});
+
+document.querySelectorAll('.preset-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var cssUrl = btn.getAttribute('data-css');
+    var jsUrl  = btn.getAttribute('data-js');
+
+    var currentCss = parseLines(extCssInput.value);
+    var currentJs  = parseLines(extJsInput.value);
+
+    var allActive = true;
+    if (cssUrl && currentCss.indexOf(cssUrl) < 0) allActive = false;
+    if (jsUrl && currentJs.indexOf(jsUrl) < 0) allActive = false;
+
+    if (allActive) {
+      if (cssUrl) currentCss = currentCss.filter(function(u) { return u !== cssUrl; });
+      if (jsUrl)  currentJs  = currentJs.filter(function(u) { return u !== jsUrl; });
+    } else {
+      if (cssUrl && currentCss.indexOf(cssUrl) < 0) currentCss.push(cssUrl);
+      if (jsUrl && currentJs.indexOf(jsUrl) < 0)    currentJs.push(jsUrl);
+    }
+
+    extCssInput.value = currentCss.join('\n');
+    extJsInput.value  = currentJs.join('\n');
+
+    extCSS = currentCss;
+    extJS  = currentJs;
+    updatePresetButtons();
+  });
 });
 
 /* ═══════════════════════════════════════════
