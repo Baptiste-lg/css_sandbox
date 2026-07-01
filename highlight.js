@@ -30,8 +30,14 @@ var Highlight = (function() {
     safe = safe.replace(/(&lt;\/?)([\w-]+)/g, function(m, bracket, tag) {
       return wrap('tag', bracket + wrap('tagname', tag));
     });
-    safe = safe.replace(/(\s)([\w-]+)(=)(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;)/g, function(m, sp, attr, eq, val) {
+    safe = safe.replace(/(\s)([\w-]+)(=)(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;|[\w-]+)/g, function(m, sp, attr, eq, val) {
       return sp + wrap('attr', attr) + eq + wrap('string', val);
+    });
+    safe = safe.replace(/(\s)([\w-]+)(?=\s|&gt;|\/&gt;)/g, function(m, sp, attr) {
+      if (/^(disabled|checked|readonly|required|autofocus|autoplay|controls|loop|muted|hidden|novalidate|multiple|selected|defer|async|open)$/.test(attr)) {
+        return sp + wrap('attr', attr);
+      }
+      return m;
     });
     safe = safe.replace(/(&gt;)/g, wrap('tag', '$1'));
     return safe;
@@ -49,7 +55,7 @@ var Highlight = (function() {
     safe = safe.replace(/([{};:])/g, function(m) { return wrap('punct', m); });
     safe = safe.replace(/([\w-]+)\s*(?=:)/g, function(m, prop) { return wrap('property', prop); });
     safe = safe.replace(/(@[\w-]+)/g, function(m) { return wrap('keyword', m); });
-    safe = safe.replace(/((?:^|\n|[};])\s*)((?:[.#:[\w*>+~, -])+)(\s*\{)/gm, function(m, before, sel, brace) {
+    safe = safe.replace(/((?:^|\n|[};])\s*)((?:[.#:\w*>+~,\s\-\[\]=&quot;'|^$])+?)(\s*\{)/gm, function(m, before, sel, brace) {
       return before + wrap('selector', sel) + brace;
     });
     return safe;
@@ -64,7 +70,7 @@ var Highlight = (function() {
     safe = safe.replace(/(\/\*[\s\S]*?\*\/)/g, function(m) { return wrap('comment', m); });
     safe = safe.replace(/(`(?:[^`\\]|\\.|\$\{[^}]*\})*`)/g, function(m) { return wrap('string', m); });
     safe = safe.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, function(m) { return wrap('string', m); });
-    safe = safe.replace(/(\/(?:[^/\\]|\\.)+\/[gimsuy]*)/g, function(m) { return wrap('regex', m); });
+    safe = safe.replace(/((?:^|[=(:,;!&|?~^+\-*/%<>{}[\]\n])\s*)(\/(?:[^/\\*\n]|\\.)[^/\\\n]*\/[gimsuy]*)/gm, function(m, before, rx) { return before + wrap('regex', rx); });
     safe = safe.replace(/\b(\d+\.?\d*(?:e[+-]?\d+)?)\b/gi, function(m) { return wrap('number', m); });
     safe = safe.replace(JS_KEYWORDS, function(m) { return wrap('keyword', m); });
     safe = safe.replace(/\b(document|window|console|Math|JSON|Array|Object|String|Number|Boolean|Promise|Set|Map)\b/g, function(m) { return wrap('builtin', m); });

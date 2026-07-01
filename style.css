@@ -96,24 +96,24 @@ html, body {
   padding: 2px;
 }
 
-.layout-btn {
-  padding: 4px 10px !important;
-  background: transparent !important;
-  color: var(--text-dim) !important;
-  border: none !important;
-  border-radius: 3px !important;
-  font-size: 14px !important;
-  font-weight: 400 !important;
+#toolbar .layout-group .layout-btn {
+  padding: 4px 10px;
+  background: transparent;
+  color: var(--text-dim);
+  border: none;
+  border-radius: 3px;
+  font-size: 14px;
+  font-weight: 400;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   line-height: 1;
 }
 
-.layout-btn:hover { color: var(--text) !important; }
+#toolbar .layout-group .layout-btn:hover { color: var(--text); }
 
-.layout-btn.active {
-  background: var(--accent) !important;
-  color: var(--bg) !important;
+#toolbar .layout-group .layout-btn.active {
+  background: var(--accent);
+  color: var(--bg);
 }
 
 /* ── Tab bar (visible only in tabs mode) ── */
@@ -369,10 +369,10 @@ html, body {
   word-break: break-word;
 }
 
-.console-log   { color: var(--text); }
-.console-warn  { color: #f9e2af; }
-.console-error { color: var(--error); }
-.console-info  { color: #89b4fa; }
+.console-level-log   { color: var(--text); }
+.console-level-warn  { color: #f9e2af; }
+.console-level-error { color: var(--error); }
+.console-level-info  { color: #89b4fa; }
 
 .console-badge {
   font-size: 10px;

@@ -72,6 +72,8 @@ function createPanel(def) {
   } else if (def.type === 'preview') {
     var iframe = document.createElement('iframe');
     iframe.id = 'preview';
+    iframe.title = 'Preview';
+    iframe.setAttribute('sandbox', 'allow-scripts');
     body.appendChild(iframe);
   } else if (def.type === 'console') {
     var consoleLog = document.createElement('div');
@@ -112,6 +114,15 @@ function focusPanel(id) {
   var hostId = getGroupHost(id);
   panels[hostId].el.classList.add('focused');
   panels[hostId].el.style.zIndex = ++zCounter;
+
+  if (zCounter > 10000) {
+    var sorted = Object.keys(panels)
+      .map(function(k) { return panels[k].el; })
+      .filter(function(el) { return el.style.display !== 'none'; })
+      .sort(function(a, b) { return (parseInt(a.style.zIndex) || 0) - (parseInt(b.style.zIndex) || 0); });
+    sorted.forEach(function(el, i) { el.style.zIndex = 100 + i; });
+    zCounter = 100 + sorted.length;
+  }
 }
 
 /* ═══════════════════════════════════════════
@@ -130,14 +141,6 @@ function getGroupHost(panelId) {
     if (groups[keys[i]].indexOf(panelId) >= 0) return keys[i];
   }
   return panelId;
-}
-
-function getGroupMembers(hostId) {
-  return groups[hostId] || [hostId];
-}
-
-function isGrouped(panelId) {
-  return !!groups[getGroupHost(panelId)];
 }
 
 function getPanelTitle(panelId) {
@@ -217,11 +220,8 @@ function ungroupPanel(panelId) {
     guestPanel.style.width  = hostRect.offsetWidth + 'px';
     guestPanel.style.height = hostRect.offsetHeight + 'px';
   } else {
-    var newHost = groups[hostId][1];
     var oldMembers = groups[hostId].slice();
     delete groups[hostId];
-
-    var oldHostBody = panels[hostId].el.querySelector('.panel-body[data-owner="' + hostId + '"]');
 
     oldMembers.forEach(function(id) {
       if (id === hostId) return;
@@ -668,13 +668,25 @@ function saveLayout() {
       h: el.offsetHeight
     };
   });
-  try { localStorage.setItem('css-sandbox-layout', JSON.stringify(layout)); } catch(e) {}
+  var data = {
+    panels: layout,
+    workspaceW: workspace.offsetWidth,
+    workspaceH: workspace.offsetHeight
+  };
+  try {
+    localStorage.setItem('css-sandbox-layout', JSON.stringify(data));
+    localStorage.setItem('css-sandbox-groups', JSON.stringify(groups));
+  } catch(e) {}
 }
 
 function loadLayout() {
   try {
     var saved = localStorage.getItem('css-sandbox-layout');
-    if (saved) return JSON.parse(saved);
+    if (!saved) return null;
+    var data = JSON.parse(saved);
+    if (data.panels) return data;
+    /* backwards compat: old format was just the panels object */
+    return { panels: data, workspaceW: 0, workspaceH: 0 };
   } catch(e) {}
   return null;
 }
@@ -845,10 +857,23 @@ layoutBtns.forEach(function(btn) {
 
 var savedLayout = loadLayout();
 if (savedLayout) {
-  applyLayout(savedLayout);
+  applyLayout(savedLayout.panels);
 } else {
   applyLayout(getPresetLayout(currentLayoutMode));
 }
+
+try {
+  var savedGroups = localStorage.getItem('css-sandbox-groups');
+  if (savedGroups) {
+    var restoredGroups = JSON.parse(savedGroups);
+    Object.keys(restoredGroups).forEach(function(hostId) {
+      var members = restoredGroups[hostId];
+      for (var i = 1; i < members.length; i++) {
+        groupPanels(hostId, members[i]);
+      }
+    });
+  }
+} catch(e) {}
 
 if (currentLayoutMode === 'tabs') {
   showTabBar(true);
@@ -1026,16 +1051,44 @@ var btnShare = document.getElementById('btn-share');
 btnShare.addEventListener('click', function() {
   updateHash();
   var url = location.href;
-  navigator.clipboard.writeText(url).then(function() {
+
+  function showShareTooltip(text) {
+    var existing = btnShare.querySelector('.tooltip');
+    if (existing) existing.remove();
+
     var tip = document.createElement('span');
     tip.className = 'tooltip visible';
-    tip.textContent = 'Copied! (' + url.length + ' chars)';
+    tip.textContent = text;
     btnShare.appendChild(tip);
     setTimeout(function() {
       tip.classList.remove('visible');
       setTimeout(function() { tip.remove(); }, 200);
     }, 1500);
-  });
+  }
+
+  function fallbackCopy() {
+    var tmp = document.createElement('textarea');
+    tmp.value = url;
+    tmp.style.position = 'fixed';
+    tmp.style.opacity = '0';
+    document.body.appendChild(tmp);
+    tmp.select();
+    try {
+      document.execCommand('copy');
+      showShareTooltip('Copied! (' + url.length + ' chars)');
+    } catch(e) {
+      showShareTooltip('Copy failed');
+    }
+    document.body.removeChild(tmp);
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function() {
+      showShareTooltip('Copied! (' + url.length + ' chars)');
+    }).catch(fallbackCopy);
+  } else {
+    fallbackCopy();
+  }
 });
 
 /* ═══════════════════════════════════════════
@@ -1053,7 +1106,7 @@ function addConsoleEntry(method, text) {
   consoleMessages.push({ method: method, text: text });
 
   var entry = document.createElement('div');
-  entry.className = 'console-entry console-' + method;
+  entry.className = 'console-entry console-level-' + method;
   entry.textContent = text;
   consoleLog.appendChild(entry);
   consoleLog.scrollTop = consoleLog.scrollHeight;
@@ -1067,6 +1120,7 @@ function addConsoleEntry(method, text) {
    ═══════════════════════════════════════════ */
 window.addEventListener('message', function(e) {
   if (!e.data) return;
+  if (e.source !== preview.contentWindow) return;
 
   if (e.data.type === 'iframe-console') {
     addConsoleEntry(e.data.method, e.data.text);
@@ -1104,8 +1158,49 @@ function handleTab(e) {
   var ta = e.target;
   var start = ta.selectionStart;
   var end = ta.selectionEnd;
-  ta.value = ta.value.substring(0, start) + '  ' + ta.value.substring(end);
-  ta.selectionStart = ta.selectionEnd = start + 2;
+  var val = ta.value;
+
+  if (start === end && !e.shiftKey) {
+    ta.value = val.substring(0, start) + '  ' + val.substring(end);
+    ta.selectionStart = ta.selectionEnd = start + 2;
+  } else {
+    var lineStart = val.lastIndexOf('\n', start - 1) + 1;
+    var lineEnd = val.indexOf('\n', end);
+    if (lineEnd < 0) lineEnd = val.length;
+    var block = val.substring(lineStart, lineEnd);
+    var lines = block.split('\n');
+    var newLines;
+    var delta = 0;
+    var firstDelta = 0;
+
+    if (e.shiftKey) {
+      newLines = lines.map(function(line, i) {
+        if (line.substring(0, 2) === '  ') {
+          if (i === 0) firstDelta = -2;
+          delta -= 2;
+          return line.substring(2);
+        } else if (line.charAt(0) === ' ') {
+          if (i === 0) firstDelta = -1;
+          delta -= 1;
+          return line.substring(1);
+        }
+        return line;
+      });
+    } else {
+      newLines = lines.map(function(line) {
+        delta += 2;
+        return '  ' + line;
+      });
+      firstDelta = 2;
+    }
+
+    var replaced = newLines.join('\n');
+    ta.value = val.substring(0, lineStart) + replaced + val.substring(lineEnd);
+    ta.selectionStart = Math.max(lineStart, start + firstDelta);
+    ta.selectionEnd = end + delta;
+  }
+
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 editorHTML.addEventListener('keydown', handleTab);
@@ -1145,7 +1240,12 @@ var extCssInput   = document.getElementById('ext-css');
 var extJsInput    = document.getElementById('ext-js');
 
 function parseLines(str) {
-  return str.split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
+  return str.split('\n').map(function(s) { return s.trim(); }).filter(function(s) {
+    if (s.length === 0) return false;
+    if (/^(https?:)?\/\//.test(s)) return true;
+    addConsoleEntry('warn', 'Ignored invalid resource URL: ' + s);
+    return false;
+  });
 }
 
 function openSettings() {
@@ -1181,6 +1281,12 @@ settingsModal.addEventListener('click', function(e) {
   if (e.target === settingsModal) closeSettings();
 });
 
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && !settingsModal.classList.contains('hidden')) {
+    closeSettings();
+  }
+});
+
 document.querySelectorAll('.preset-btn').forEach(function(btn) {
   btn.addEventListener('click', function() {
     var cssUrl = btn.getAttribute('data-css');
@@ -1214,7 +1320,7 @@ document.querySelectorAll('.preset-btn').forEach(function(btn) {
    Keyboard shortcuts
    ═══════════════════════════════════════════ */
 document.addEventListener('keydown', function(e) {
-  var isMac = navigator.platform.indexOf('Mac') >= 0;
+  var isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
   var mod = isMac ? e.metaKey : e.ctrlKey;
 
   if (mod && e.key === 's') {
@@ -1252,27 +1358,19 @@ document.getElementById('btn-download').addEventListener('click', function() {
     return '  <script src="' + url.replace(/"/g, '&quot;') + '"><\/script>';
   }).join('\n');
 
-  var file = [
+  var parts = [
     '<!DOCTYPE html>',
     '<html lang="en">',
     '<head>',
     '  <meta charset="UTF-8">',
     '  <meta name="viewport" content="width=device-width, initial-scale=1.0">',
-    '  <title>CSS Sandbox Export</title>',
-    extCssLinks,
-    '  <style>',
-    css,
-    '  </style>',
-    '</head>',
-    '<body>',
-    html,
-    extJsTags,
-    '  <script>',
-    js,
-    '  <\/script>',
-    '</body>',
-    '</html>'
-  ].join('\n');
+    '  <title>CSS Sandbox Export</title>'
+  ];
+  if (extCssLinks) parts.push(extCssLinks);
+  parts.push('  <style>', css, '  </style>', '</head>', '<body>', html);
+  if (extJsTags) parts.push(extJsTags);
+  parts.push('  <script>', js, '  <\/script>', '</body>', '</html>');
+  var file = parts.join('\n');
 
   var blob = new Blob([file], { type: 'text/html' });
   var a = document.createElement('a');
@@ -1285,8 +1383,40 @@ document.getElementById('btn-download').addEventListener('click', function() {
 /* ═══════════════════════════════════════════
    Recalculate default layout on resize
    ═══════════════════════════════════════════ */
+var resizeTimer = null;
 window.addEventListener('resize', function() {
-  if (!loadLayout()) applyLayout(defaultLayout());
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(function() {
+    var saved = loadLayout();
+    if (saved && saved.workspaceW && saved.workspaceH) {
+      var scaleX = workspace.offsetWidth / saved.workspaceW;
+      var scaleY = workspace.offsetHeight / saved.workspaceH;
+      var scaled = {};
+      Object.keys(saved.panels).forEach(function(id) {
+        var r = saved.panels[id];
+        scaled[id] = {
+          x: Math.round(r.x * scaleX),
+          y: Math.round(r.y * scaleY),
+          w: Math.round(r.w * scaleX),
+          h: Math.round(r.h * scaleY)
+        };
+      });
+      applyLayout(scaled);
+    } else {
+      applyLayout(defaultLayout());
+    }
+    saveLayout();
+  }, 200);
 });
+
+/* ═══════════════════════════════════════════
+   Update footer shortcut hints for Mac
+   ═══════════════════════════════════════════ */
+if (/Mac|iPhone|iPad|iPod/.test(navigator.userAgent)) {
+  var kbds = document.querySelectorAll('#footer kbd');
+  kbds.forEach(function(kbd) {
+    kbd.textContent = kbd.textContent.replace('Ctrl', 'Cmd');
+  });
+}
 
 run();
