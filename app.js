@@ -112,33 +112,129 @@ function focusPanel(id) {
 }
 
 /* ═══════════════════════════════════════════
-   Snap zones: Windows-style edge snapping
-   ═══════════════════════════════════════════ */
-var snapPreview  = document.getElementById('snap-preview');
-var SNAP_THRESHOLD = 16;
+   Snap zones: smart edge snapping
 
-function getSnapZone(clientX, clientY) {
+   Tracks which panels are docked to which
+   regions. When a new panel snaps to an edge
+   that's already occupied, it subdivides the
+   space instead of overlapping.
+   ═══════════════════════════════════════════ */
+var snapPreview    = document.getElementById('snap-preview');
+var SNAP_THRESHOLD = 20;
+var dockedPanels   = {};
+
+function getPanelRect(el) {
+  return {
+    x: el.offsetLeft,
+    y: el.offsetTop,
+    w: el.offsetWidth,
+    h: el.offsetHeight
+  };
+}
+
+function rectsOverlap(a, b) {
+  var tolerance = 8;
+  return !(a.x + a.w <= b.x + tolerance ||
+           b.x + b.w <= a.x + tolerance ||
+           a.y + a.h <= b.y + tolerance ||
+           b.y + b.h <= a.y + tolerance);
+}
+
+function getSnapZone(clientX, clientY, draggedEl) {
   var rect = workspace.getBoundingClientRect();
   var x = clientX - rect.left;
   var y = clientY - rect.top;
-  var w = rect.width;
-  var h = rect.height;
+  var W = rect.width;
+  var H = rect.height;
 
   var nearL = x < SNAP_THRESHOLD;
-  var nearR = x > w - SNAP_THRESHOLD;
+  var nearR = x > W - SNAP_THRESHOLD;
   var nearT = y < SNAP_THRESHOLD;
-  var nearB = y > h - SNAP_THRESHOLD;
+  var nearB = y > H - SNAP_THRESHOLD;
 
-  if (nearL && nearT) return { x: 0,     y: 0,     w: w / 2, h: h / 2 };
-  if (nearR && nearT) return { x: w / 2, y: 0,     w: w / 2, h: h / 2 };
-  if (nearL && nearB) return { x: 0,     y: h / 2, w: w / 2, h: h / 2 };
-  if (nearR && nearB) return { x: w / 2, y: h / 2, w: w / 2, h: h / 2 };
-  if (nearL)          return { x: 0,     y: 0,     w: w / 2, h: h     };
-  if (nearR)          return { x: w / 2, y: 0,     w: w / 2, h: h     };
-  if (nearT)          return { x: 0,     y: 0,     w: w,     h: h / 2 };
-  if (nearB)          return { x: 0,     y: h / 2, w: w,     h: h / 2 };
+  if (!nearL && !nearR && !nearT && !nearB) return null;
 
-  return null;
+  var candidate = null;
+
+  if (nearL && nearT) candidate = { x: 0,     y: 0,     w: W / 2, h: H / 2 };
+  else if (nearR && nearT) candidate = { x: W / 2, y: 0,     w: W / 2, h: H / 2 };
+  else if (nearL && nearB) candidate = { x: 0,     y: H / 2, w: W / 2, h: H / 2 };
+  else if (nearR && nearB) candidate = { x: W / 2, y: H / 2, w: W / 2, h: H / 2 };
+  else if (nearL) candidate = { x: 0,     y: 0,     w: W / 2, h: H     };
+  else if (nearR) candidate = { x: W / 2, y: 0,     w: W / 2, h: H     };
+  else if (nearT) candidate = { x: 0,     y: 0,     w: W,     h: H / 2 };
+  else if (nearB) candidate = { x: 0,     y: H / 2, w: W,     h: H / 2 };
+
+  if (!candidate) return null;
+
+  var occupied = findOccupyingPanels(candidate, draggedEl);
+  if (occupied.length === 0) return candidate;
+
+  return subdivide(candidate, occupied, x, y);
+}
+
+function findOccupyingPanels(zone, draggedEl) {
+  var result = [];
+  Object.keys(dockedPanels).forEach(function(id) {
+    var docked = dockedPanels[id];
+    if (docked.el === draggedEl) return;
+    if (rectsOverlap(zone, docked.zone)) {
+      result.push(docked);
+    }
+  });
+  return result;
+}
+
+function subdivide(zone, occupied, cursorX, cursorY) {
+  var isWide = zone.w > zone.h;
+
+  if (isWide) {
+    var leftOccupied = false, rightOccupied = false;
+    var midX = zone.x + zone.w / 2;
+    occupied.forEach(function(d) {
+      var center = d.zone.x + d.zone.w / 2;
+      if (center < midX) leftOccupied = true;
+      else rightOccupied = true;
+    });
+
+    if (leftOccupied && !rightOccupied) {
+      return { x: midX, y: zone.y, w: zone.w / 2, h: zone.h };
+    }
+    if (rightOccupied && !leftOccupied) {
+      return { x: zone.x, y: zone.y, w: zone.w / 2, h: zone.h };
+    }
+    if (cursorX < midX) {
+      return { x: zone.x, y: zone.y, w: zone.w / 2, h: zone.h };
+    }
+    return { x: midX, y: zone.y, w: zone.w / 2, h: zone.h };
+  }
+
+  var topOccupied = false, bottomOccupied = false;
+  var midY = zone.y + zone.h / 2;
+  occupied.forEach(function(d) {
+    var center = d.zone.y + d.zone.h / 2;
+    if (center < midY) topOccupied = true;
+    else bottomOccupied = true;
+  });
+
+  if (topOccupied && !bottomOccupied) {
+    return { x: zone.x, y: midY, w: zone.w, h: zone.h / 2 };
+  }
+  if (bottomOccupied && !topOccupied) {
+    return { x: zone.x, y: zone.y, w: zone.w, h: zone.h / 2 };
+  }
+  if (cursorY < midY) {
+    return { x: zone.x, y: zone.y, w: zone.w, h: zone.h / 2 };
+  }
+  return { x: zone.x, y: midY, w: zone.w, h: zone.h / 2 };
+}
+
+function dockPanel(el, zone) {
+  dockedPanels[el.id] = { el: el, zone: zone };
+}
+
+function undockPanel(el) {
+  delete dockedPanels[el.id];
 }
 
 function showSnapPreview(zone) {
@@ -166,22 +262,30 @@ function initDrag(el, header) {
     startY = e.clientY;
     origX = el.offsetLeft;
     origY = el.offsetTop;
+
+    undockPanel(el);
+
     dragOverlay.style.display = 'block';
     dragOverlay.style.cursor = 'grabbing';
 
     function onMove(e) {
       el.style.left = (origX + e.clientX - startX) + 'px';
       el.style.top  = (origY + e.clientY - startY) + 'px';
-      showSnapPreview(getSnapZone(e.clientX, e.clientY));
+
+      var wsRect = workspace.getBoundingClientRect();
+      var localX = e.clientX - wsRect.left;
+      var localY = e.clientY - wsRect.top;
+      showSnapPreview(getSnapZone(e.clientX, e.clientY, el));
     }
 
     function onUp(e) {
-      var zone = getSnapZone(e.clientX, e.clientY);
+      var zone = getSnapZone(e.clientX, e.clientY, el);
       if (zone) {
         el.style.left   = zone.x + 'px';
         el.style.top    = zone.y + 'px';
         el.style.width  = zone.w + 'px';
         el.style.height = zone.h + 'px';
+        dockPanel(el, zone);
       }
       snapPreview.style.display = 'none';
       dragOverlay.style.display = 'none';
@@ -207,6 +311,8 @@ function initResize(el) {
     handle.addEventListener('mousedown', function(e) {
       e.preventDefault();
       e.stopPropagation();
+
+      undockPanel(el);
 
       var cls = handle.className;
       var startX = e.clientX, startY = e.clientY;
@@ -305,24 +411,39 @@ focusPanel('panel-preview');
 
 /* ═══════════════════════════════════════════
    URL hash encoding/decoding
-   btoa/atob with Unicode support
+
+   Uses LZString for ~60-80% shorter URLs.
+   Backward compatible: detects old base64
+   format (starts with "ey" after decode
+   attempt) vs LZ format.
    ═══════════════════════════════════════════ */
 function encodeState(html, css, js) {
   var json = JSON.stringify({ html: html, css: css, js: js });
-  var encoded = btoa(unescape(encodeURIComponent(json)));
-  return encoded;
+  return LZString.compressToEncodedURIComponent(json);
 }
 
 function decodeState(hash) {
+  var raw = hash.replace(/^#/, '');
+  if (!raw) return null;
+
   try {
-    var raw = hash.replace(/^#/, '');
-    if (!raw) return null;
-    var json = decodeURIComponent(escape(atob(raw)));
-    var state = JSON.parse(json);
+    var json = LZString.decompressFromEncodedURIComponent(raw);
+    if (json) {
+      var state = JSON.parse(json);
+      if (typeof state.html === 'string' && typeof state.css === 'string' && typeof state.js === 'string') {
+        return state;
+      }
+    }
+  } catch(e) {}
+
+  try {
+    var legacy = decodeURIComponent(escape(atob(raw)));
+    var state = JSON.parse(legacy);
     if (typeof state.html === 'string' && typeof state.css === 'string' && typeof state.js === 'string') {
       return state;
     }
   } catch(e) {}
+
   return null;
 }
 
@@ -497,6 +618,7 @@ editorJS.addEventListener('keydown', handleTab);
    ═══════════════════════════════════════════ */
 document.getElementById('btn-reset').addEventListener('click', function() {
   try { localStorage.removeItem('css-sandbox-layout'); } catch(e) {}
+  dockedPanels = {};
   applyLayout(defaultLayout());
 });
 
