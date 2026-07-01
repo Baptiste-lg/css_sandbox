@@ -234,6 +234,18 @@
       z-index: 9999;
       display: none;
     }
+
+    /* ── Snap preview indicator ── */
+    #snap-preview {
+      position: absolute;
+      background: rgba(137, 180, 250, 0.12);
+      border: 2px solid var(--accent);
+      border-radius: 6px;
+      z-index: 9998;
+      display: none;
+      pointer-events: none;
+      transition: left 0.1s, top 0.1s, width 0.1s, height 0.1s;
+    }
   </style>
 </head>
 <body>
@@ -247,6 +259,7 @@
     </div>
     <div id="workspace">
       <div id="drag-overlay"></div>
+      <div id="snap-preview"></div>
     </div>
   </div>
 
@@ -364,6 +377,48 @@
     }
 
     /* ═══════════════════════════════════════════
+       Snap zones: Windows-style edge snapping
+       ═══════════════════════════════════════════ */
+    var snapPreview = document.getElementById('snap-preview');
+    var SNAP_THRESHOLD = 16;
+
+    function getSnapZone(clientX, clientY) {
+      var rect = workspace.getBoundingClientRect();
+      var x = clientX - rect.left;
+      var y = clientY - rect.top;
+      var w = rect.width;
+      var h = rect.height;
+
+      var nearL = x < SNAP_THRESHOLD;
+      var nearR = x > w - SNAP_THRESHOLD;
+      var nearT = y < SNAP_THRESHOLD;
+      var nearB = y > h - SNAP_THRESHOLD;
+
+      if (nearL && nearT) return { x: 0,       y: 0,       w: w / 2, h: h / 2 };
+      if (nearR && nearT) return { x: w / 2,   y: 0,       w: w / 2, h: h / 2 };
+      if (nearL && nearB) return { x: 0,       y: h / 2,   w: w / 2, h: h / 2 };
+      if (nearR && nearB) return { x: w / 2,   y: h / 2,   w: w / 2, h: h / 2 };
+      if (nearL)          return { x: 0,       y: 0,       w: w / 2, h: h     };
+      if (nearR)          return { x: w / 2,   y: 0,       w: w / 2, h: h     };
+      if (nearT)          return { x: 0,       y: 0,       w: w,     h: h / 2 };
+      if (nearB)          return { x: 0,       y: h / 2,   w: w,     h: h / 2 };
+
+      return null;
+    }
+
+    function showSnapPreview(zone) {
+      if (!zone) {
+        snapPreview.style.display = 'none';
+        return;
+      }
+      snapPreview.style.display = 'block';
+      snapPreview.style.left   = zone.x + 'px';
+      snapPreview.style.top    = zone.y + 'px';
+      snapPreview.style.width  = zone.w + 'px';
+      snapPreview.style.height = zone.h + 'px';
+    }
+
+    /* ═══════════════════════════════════════════
        Drag: move panels by their header
        ═══════════════════════════════════════════ */
     function initDrag(el, header) {
@@ -382,9 +437,18 @@
         function onMove(e) {
           el.style.left = (origX + e.clientX - startX) + 'px';
           el.style.top  = (origY + e.clientY - startY) + 'px';
+          showSnapPreview(getSnapZone(e.clientX, e.clientY));
         }
 
-        function onUp() {
+        function onUp(e) {
+          var zone = getSnapZone(e.clientX, e.clientY);
+          if (zone) {
+            el.style.left   = zone.x + 'px';
+            el.style.top    = zone.y + 'px';
+            el.style.width  = zone.w + 'px';
+            el.style.height = zone.h + 'px';
+          }
+          snapPreview.style.display = 'none';
           dragOverlay.style.display = 'none';
           dragOverlay.style.cursor = '';
           document.removeEventListener('mousemove', onMove);
