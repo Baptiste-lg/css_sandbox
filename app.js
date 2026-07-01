@@ -304,6 +304,34 @@ applyLayout(layout);
 focusPanel('panel-preview');
 
 /* ═══════════════════════════════════════════
+   URL hash encoding/decoding
+   btoa/atob with Unicode support
+   ═══════════════════════════════════════════ */
+function encodeState(html, css, js) {
+  var json = JSON.stringify({ html: html, css: css, js: js });
+  var encoded = btoa(unescape(encodeURIComponent(json)));
+  return encoded;
+}
+
+function decodeState(hash) {
+  try {
+    var raw = hash.replace(/^#/, '');
+    if (!raw) return null;
+    var json = decodeURIComponent(escape(atob(raw)));
+    var state = JSON.parse(json);
+    if (typeof state.html === 'string' && typeof state.css === 'string' && typeof state.js === 'string') {
+      return state;
+    }
+  } catch(e) {}
+  return null;
+}
+
+function updateHash() {
+  var encoded = encodeState(editorHTML.value, editorCSS.value, editorJS.value);
+  history.replaceState(null, '', '#' + encoded);
+}
+
+/* ═══════════════════════════════════════════
    Editor references and default content
    ═══════════════════════════════════════════ */
 var editorHTML = document.getElementById('editor-html');
@@ -313,9 +341,9 @@ var preview    = document.getElementById('preview');
 var errorList  = document.getElementById('error-list');
 var errorCount = document.getElementById('error-count');
 
-editorHTML.value = '<div class="box">Hover me</div>';
+var DEFAULT_HTML = '<div class="box">Hover me</div>';
 
-editorCSS.value = [
+var DEFAULT_CSS = [
   'body {',
   '  display: flex;',
   '  justify-content: center;',
@@ -342,12 +370,17 @@ editorCSS.value = [
   '}'
 ].join('\n');
 
-editorJS.value = [
+var DEFAULT_JS = [
   'document.querySelector(".box").addEventListener("click", function() {',
   '  this.textContent = "Clicked!";',
   '  this.style.background = "#0f3460";',
   '});'
 ].join('\n');
+
+var restored = decodeState(location.hash);
+editorHTML.value = restored ? restored.html : DEFAULT_HTML;
+editorCSS.value  = restored ? restored.css  : DEFAULT_CSS;
+editorJS.value   = restored ? restored.js   : DEFAULT_JS;
 
 /* ═══════════════════════════════════════════
    Run: build and inject preview
@@ -383,7 +416,28 @@ function run() {
   ].join('\n');
 
   preview.srcdoc = doc;
+  updateHash();
 }
+
+/* ═══════════════════════════════════════════
+   Share: copy URL to clipboard
+   ═══════════════════════════════════════════ */
+var btnShare = document.getElementById('btn-share');
+
+btnShare.addEventListener('click', function() {
+  updateHash();
+  var url = location.href;
+  navigator.clipboard.writeText(url).then(function() {
+    var tip = document.createElement('span');
+    tip.className = 'tooltip visible';
+    tip.textContent = 'Copied! (' + url.length + ' chars)';
+    btnShare.appendChild(tip);
+    setTimeout(function() {
+      tip.classList.remove('visible');
+      setTimeout(function() { tip.remove(); }, 200);
+    }, 1500);
+  });
+});
 
 /* ═══════════════════════════════════════════
    Error handling from iframe
