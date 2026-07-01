@@ -643,3 +643,116 @@ html, body {
 }
 
 .modal-footer button:hover { opacity: 0.85; }
+
+/* ── Footer ── */
+
+#footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 16px;
+  background: var(--bg-header);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  z-index: 10000;
+}
+
+#footer a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+#footer a:hover { text-decoration: underline; }
+
+.footer-shortcuts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+/* ── Mobile responsiveness ── */
+
+@media (max-width: 768px) {
+  #toolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+
+  #toolbar h1 { font-size: 12px; }
+
+  #toolbar button {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  #toolbar label { font-size: 11px; }
+
+  .layout-group { display: none; }
+
+  .footer-shortcuts { display: none; }
+
+  #footer { justify-content: center; }
+
+  .panel {
+    border-radius: 0;
+    min-width: 120px;
+    min-height: 80px;
+  }
+
+  .resize-handle.rh-right,
+  .resize-handle.rh-left,
+  .resize-handle.rh-top,
+  .resize-handle.rh-bottom { display: block; }
+
+  .resize-handle.rh-right  { width: 10px; right: -5px; }
+  .resize-handle.rh-left   { width: 10px; left: -5px; }
+  .resize-handle.rh-top    { height: 10px; top: -5px; }
+  .resize-handle.rh-bottom { height: 10px; bottom: -5px; }
+  .resize-handle.rh-br,
+  .resize-handle.rh-bl,
+  .resize-handle.rh-tr,
+  .resize-handle.rh-tl     { width: 16px; height: 16px; }
+
+  .modal-content {
+    width: 95vw;
+    max-height: 90vh;
+  }
+
+  .line-numbers { width: 30px; font-size: 11px; }
+
+  .panel textarea {
+    left: 30px;
+    width: calc(100% - 30px);
+    font-size: 12px;
+  }
+
+  .highlight-layer {
+    left: 30px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  #toolbar .spacer { display: none; }
+
+  #toolbar {
+    justify-content: center;
+  }
+
+  #toolbar button.secondary { display: none; }
+}

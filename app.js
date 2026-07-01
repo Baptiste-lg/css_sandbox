@@ -1211,6 +1211,78 @@ document.querySelectorAll('.preset-btn').forEach(function(btn) {
 });
 
 /* ═══════════════════════════════════════════
+   Keyboard shortcuts
+   ═══════════════════════════════════════════ */
+document.addEventListener('keydown', function(e) {
+  var isMac = navigator.platform.indexOf('Mac') >= 0;
+  var mod = isMac ? e.metaKey : e.ctrlKey;
+
+  if (mod && e.key === 's') {
+    e.preventDefault();
+    run();
+    return;
+  }
+
+  if (mod && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+    e.preventDefault();
+    btnShare.click();
+    return;
+  }
+
+  if (mod && (e.key === '1' || e.key === '2' || e.key === '3')) {
+    e.preventDefault();
+    var editors = [editorHTML, editorCSS, editorJS];
+    editors[parseInt(e.key) - 1].focus();
+    return;
+  }
+});
+
+/* ═══════════════════════════════════════════
+   Download: export as standalone HTML file
+   ═══════════════════════════════════════════ */
+document.getElementById('btn-download').addEventListener('click', function() {
+  var html = editorHTML.value;
+  var css  = editorCSS.value;
+  var js   = editorJS.value;
+
+  var extCssLinks = extCSS.map(function(url) {
+    return '  <link rel="stylesheet" href="' + url.replace(/"/g, '&quot;') + '">';
+  }).join('\n');
+  var extJsTags = extJS.map(function(url) {
+    return '  <script src="' + url.replace(/"/g, '&quot;') + '"><\/script>';
+  }).join('\n');
+
+  var file = [
+    '<!DOCTYPE html>',
+    '<html lang="en">',
+    '<head>',
+    '  <meta charset="UTF-8">',
+    '  <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+    '  <title>CSS Sandbox Export</title>',
+    extCssLinks,
+    '  <style>',
+    css,
+    '  </style>',
+    '</head>',
+    '<body>',
+    html,
+    extJsTags,
+    '  <script>',
+    js,
+    '  <\/script>',
+    '</body>',
+    '</html>'
+  ].join('\n');
+
+  var blob = new Blob([file], { type: 'text/html' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'sandbox-export.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+/* ═══════════════════════════════════════════
    Recalculate default layout on resize
    ═══════════════════════════════════════════ */
 window.addEventListener('resize', function() {
