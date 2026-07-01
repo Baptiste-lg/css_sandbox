@@ -221,12 +221,68 @@ html, body {
   flex-direction: column;
 }
 
-.panel textarea {
+/* ── Code editor: overlay technique ── */
+
+.editor-wrap {
+  position: relative;
   flex: 1;
-  width: 100%;
+  display: flex;
+  overflow: hidden;
+}
+
+.line-numbers {
+  width: 38px;
+  padding: 10px 6px 10px 0;
+  text-align: right;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--bg-header);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+  white-space: pre;
+  user-select: none;
+}
+
+.highlight-layer {
+  position: absolute;
+  top: 0;
+  left: 38px;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 10px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  tab-size: 2;
+  color: var(--text);
+  background: transparent;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow: auto;
+  pointer-events: none;
+}
+
+.highlight-layer code {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.panel textarea {
+  position: absolute;
+  top: 0;
+  left: 38px;
+  right: 0;
+  bottom: 0;
+  width: calc(100% - 38px);
   padding: 10px;
   background: transparent;
-  color: var(--text);
+  color: transparent;
+  caret-color: var(--text);
   border: none;
   outline: none;
   resize: none;
@@ -234,9 +290,34 @@ html, body {
   font-size: 13px;
   line-height: 1.5;
   tab-size: 2;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow: auto;
+  z-index: 2;
 }
 
 .panel textarea::placeholder { color: var(--text-dim); }
+.panel textarea::selection { background: rgba(137, 180, 250, 0.25); }
+
+/* ── Syntax highlight colors ── */
+
+.hl-comment   { color: #6c7086; font-style: italic; }
+.hl-string    { color: #a6e3a1; }
+.hl-number    { color: #fab387; }
+.hl-keyword   { color: #cba6f7; }
+.hl-builtin   { color: #f9e2af; }
+.hl-function  { color: #89b4fa; }
+.hl-regex     { color: #f2cdcd; }
+
+.hl-tag       { color: #6c7086; }
+.hl-tagname   { color: #f38ba8; }
+.hl-attr      { color: #fab387; }
+
+.hl-selector  { color: #89b4fa; }
+.hl-property  { color: #b4befe; }
+.hl-color     { color: #fab387; }
+.hl-unit      { color: #94e2d5; }
+.hl-punct     { color: #6c7086; }
 
 .panel iframe {
   flex: 1;

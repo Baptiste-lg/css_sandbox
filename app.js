@@ -645,6 +645,13 @@ editorCSS.value  = restored ? restored.css  : DEFAULT_CSS;
 editorJS.value   = restored ? restored.js   : DEFAULT_JS;
 
 /* ═══════════════════════════════════════════
+   Initialize syntax highlighting
+   ═══════════════════════════════════════════ */
+var hlHTML = Highlight.createEditor(editorHTML, 'html');
+var hlCSS  = Highlight.createEditor(editorCSS,  'css');
+var hlJS   = Highlight.createEditor(editorJS,   'js');
+
+/* ═══════════════════════════════════════════
    Run: build and inject preview
    ═══════════════════════════════════════════ */
 var errorMessages = [];
