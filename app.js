@@ -2,10 +2,11 @@
    Panel definitions
    ═══════════════════════════════════════════ */
 var PANELS = [
-  { id: 'panel-html',    title: 'HTML',    type: 'editor', editorId: 'editor-html' },
-  { id: 'panel-css',     title: 'CSS',     type: 'editor', editorId: 'editor-css'  },
-  { id: 'panel-js',      title: 'JS',      type: 'editor', editorId: 'editor-js'   },
+  { id: 'panel-html',    title: 'HTML',    type: 'editor',  editorId: 'editor-html' },
+  { id: 'panel-css',     title: 'CSS',     type: 'editor',  editorId: 'editor-css'  },
+  { id: 'panel-js',      title: 'JS',      type: 'editor',  editorId: 'editor-js'   },
   { id: 'panel-preview', title: 'Preview', type: 'preview' },
+  { id: 'panel-console', title: 'Console', type: 'console' },
   { id: 'panel-errors',  title: 'Errors',  type: 'errors'  }
 ];
 
@@ -38,6 +39,22 @@ function createPanel(def) {
   title.textContent = def.title;
   header.appendChild(title);
 
+  if (def.type === 'console') {
+    var consoleBadge = document.createElement('span');
+    consoleBadge.className = 'console-badge';
+    consoleBadge.id = 'console-badge';
+    consoleBadge.textContent = '0';
+    header.appendChild(consoleBadge);
+    var clearBtn = document.createElement('button');
+    clearBtn.className = 'console-clear';
+    clearBtn.textContent = 'Clear';
+    clearBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      clearConsole();
+    });
+    header.appendChild(clearBtn);
+  }
+
   if (def.type === 'errors') {
     var badge = document.createElement('span');
     badge.className = 'error-count';
@@ -61,6 +78,11 @@ function createPanel(def) {
     var iframe = document.createElement('iframe');
     iframe.id = 'preview';
     body.appendChild(iframe);
+  } else if (def.type === 'console') {
+    var consoleLog = document.createElement('div');
+    consoleLog.className = 'console-log';
+    consoleLog.id = 'console-log';
+    body.appendChild(consoleLog);
   } else if (def.type === 'errors') {
     var list = document.createElement('div');
     list.className = 'error-list';
@@ -396,34 +418,37 @@ function layoutTopBottom() {
   var h = workspace.offsetHeight;
   var edW = Math.floor(w / 3);
   var edH = Math.floor(h * 0.45);
-  var pvW = Math.floor(w * 0.65);
-  var pvH = h - edH - 4;
-  var erW = w - pvW - 4;
+  var pvW = Math.floor(w * 0.5);
+  var btmH = h - edH - 4;
+  var sideW = Math.floor((w - pvW - 8) / 2);
 
   return {
-    'panel-html':    { x: 0,       y: 0,       w: edW,          h: edH },
-    'panel-css':     { x: edW,     y: 0,       w: edW,          h: edH },
-    'panel-js':      { x: edW * 2, y: 0,       w: w - edW * 2,  h: edH },
-    'panel-preview': { x: 0,       y: edH + 4, w: pvW,          h: pvH },
-    'panel-errors':  { x: pvW + 4, y: edH + 4, w: erW,          h: pvH }
+    'panel-html':    { x: 0,                    y: 0,       w: edW,          h: edH },
+    'panel-css':     { x: edW,                  y: 0,       w: edW,          h: edH },
+    'panel-js':      { x: edW * 2,              y: 0,       w: w - edW * 2,  h: edH },
+    'panel-preview': { x: 0,                    y: edH + 4, w: pvW,          h: btmH },
+    'panel-console': { x: pvW + 4,              y: edH + 4, w: sideW,        h: btmH },
+    'panel-errors':  { x: pvW + sideW + 8,      y: edH + 4, w: w - pvW - sideW - 8, h: btmH }
   };
 }
 
 function layoutLeftRight() {
   var w = workspace.offsetWidth;
   var h = workspace.offsetHeight;
-  var edW = Math.floor(w * 0.35);
+  var edW = Math.floor(w * 0.3);
   var edH = Math.floor(h / 3);
-  var pvW = w - edW - 4;
-  var pvH = Math.floor(h * 0.7);
-  var erH = h - pvH - 4;
+  var rightW = w - edW - 4;
+  var pvH = Math.floor(h * 0.55);
+  var btmH = h - pvH - 4;
+  var halfRight = Math.floor(rightW / 2);
 
   return {
-    'panel-html':    { x: 0,       y: 0,           w: edW, h: edH },
-    'panel-css':     { x: 0,       y: edH,         w: edW, h: edH },
-    'panel-js':      { x: 0,       y: edH * 2,     w: edW, h: h - edH * 2 },
-    'panel-preview': { x: edW + 4, y: 0,           w: pvW, h: pvH },
-    'panel-errors':  { x: edW + 4, y: pvH + 4,     w: pvW, h: erH }
+    'panel-html':    { x: 0,               y: 0,           w: edW,      h: edH },
+    'panel-css':     { x: 0,               y: edH,         w: edW,      h: edH },
+    'panel-js':      { x: 0,               y: edH * 2,     w: edW,      h: h - edH * 2 },
+    'panel-preview': { x: edW + 4,         y: 0,           w: rightW,   h: pvH },
+    'panel-console': { x: edW + 4,         y: pvH + 4,     w: halfRight, h: btmH },
+    'panel-errors':  { x: edW + halfRight + 8, y: pvH + 4, w: rightW - halfRight - 4, h: btmH }
   };
 }
 
@@ -431,17 +456,18 @@ function layoutTabs() {
   var w = workspace.offsetWidth;
   var h = workspace.offsetHeight;
   var tabH = 32;
-  var edH = Math.floor((h - tabH) * 0.45);
-  var pvW = Math.floor(w * 0.65);
-  var pvH = h - tabH - edH - 4;
-  var erW = w - pvW - 4;
+  var edH = Math.floor((h - tabH) * 0.4);
+  var pvW = Math.floor(w * 0.5);
+  var btmH = h - tabH - edH - 4;
+  var sideW = Math.floor((w - pvW - 8) / 2);
 
   return {
-    'panel-html':    { x: 0, y: tabH,          w: w,   h: edH },
-    'panel-css':     { x: 0, y: tabH,          w: w,   h: edH },
-    'panel-js':      { x: 0, y: tabH,          w: w,   h: edH },
-    'panel-preview': { x: 0, y: tabH + edH + 4, w: pvW, h: pvH },
-    'panel-errors':  { x: pvW + 4, y: tabH + edH + 4, w: erW, h: pvH }
+    'panel-html':    { x: 0, y: tabH,           w: w,   h: edH },
+    'panel-css':     { x: 0, y: tabH,           w: w,   h: edH },
+    'panel-js':      { x: 0, y: tabH,           w: w,   h: edH },
+    'panel-preview': { x: 0, y: tabH + edH + 4, w: pvW, h: btmH },
+    'panel-console': { x: pvW + 4, y: tabH + edH + 4, w: sideW, h: btmH },
+    'panel-errors':  { x: pvW + sideW + 8, y: tabH + edH + 4, w: w - pvW - sideW - 8, h: btmH }
   };
 }
 
@@ -476,7 +502,7 @@ function setActiveTab(tabId) {
 }
 
 function restoreAllPanelsVisible() {
-  ['panel-html', 'panel-css', 'panel-js', 'panel-preview', 'panel-errors'].forEach(function(id) {
+  ['panel-html', 'panel-css', 'panel-js', 'panel-preview', 'panel-console', 'panel-errors'].forEach(function(id) {
     if (!panels[id]) return;
     panels[id].el.style.display = '';
   });
@@ -600,8 +626,10 @@ var editorHTML = document.getElementById('editor-html');
 var editorCSS  = document.getElementById('editor-css');
 var editorJS   = document.getElementById('editor-js');
 var preview    = document.getElementById('preview');
-var errorList  = document.getElementById('error-list');
-var errorCount = document.getElementById('error-count');
+var errorList    = document.getElementById('error-list');
+var errorCount   = document.getElementById('error-count');
+var consoleLog   = document.getElementById('console-log');
+var consoleBadge = document.getElementById('console-badge');
 
 var DEFAULT_HTML = '<div class="box">Hover me</div>';
 
@@ -665,6 +693,10 @@ function run() {
   errorList.innerHTML = '';
   errorCount.style.display = 'none';
 
+  consoleMessages = [];
+  consoleLog.innerHTML = '';
+  consoleBadge.style.display = 'none';
+
   var doc = [
     '<!DOCTYPE html>',
     '<html><head><meta charset="UTF-8">',
@@ -672,6 +704,21 @@ function run() {
     '<\/head><body>',
     html,
     '<script>',
+    '(function() {',
+    '  var methods = ["log", "warn", "error", "info"];',
+    '  methods.forEach(function(m) {',
+    '    var orig = console[m];',
+    '    console[m] = function() {',
+    '      var args = Array.prototype.slice.call(arguments);',
+    '      var parts = args.map(function(a) {',
+    '        if (typeof a === "object") { try { return JSON.stringify(a, null, 2); } catch(e) { return String(a); } }',
+    '        return String(a);',
+    '      });',
+    '      window.parent.postMessage({ type: "iframe-console", method: m, text: parts.join(" ") }, "*");',
+    '      orig.apply(console, arguments);',
+    '    };',
+    '  });',
+    '})();',
     'window.addEventListener("error", function(e) {',
     '  window.parent.postMessage({ type: "iframe-error", message: e.message, line: e.lineno }, "*");',
     '});',
@@ -709,22 +756,53 @@ btnShare.addEventListener('click', function() {
 });
 
 /* ═══════════════════════════════════════════
-   Error handling from iframe
+   Console output from iframe
    ═══════════════════════════════════════════ */
-window.addEventListener('message', function(e) {
-  if (!e.data || e.data.type !== 'iframe-error') return;
+var consoleMessages = [];
 
-  var msg = e.data.message;
-  if (e.data.line) msg += ' (line ' + e.data.line + ')';
-  errorMessages.push(msg);
+function clearConsole() {
+  consoleMessages = [];
+  consoleLog.innerHTML = '';
+  consoleBadge.style.display = 'none';
+}
+
+function addConsoleEntry(method, text) {
+  consoleMessages.push({ method: method, text: text });
 
   var entry = document.createElement('div');
-  entry.className = 'error-entry';
-  entry.textContent = msg;
-  errorList.appendChild(entry);
+  entry.className = 'console-entry console-' + method;
+  entry.textContent = text;
+  consoleLog.appendChild(entry);
+  consoleLog.scrollTop = consoleLog.scrollHeight;
 
-  errorCount.textContent = errorMessages.length;
-  errorCount.style.display = 'inline';
+  consoleBadge.textContent = consoleMessages.length;
+  consoleBadge.style.display = 'inline';
+}
+
+/* ═══════════════════════════════════════════
+   Message handler from iframe
+   ═══════════════════════════════════════════ */
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+
+  if (e.data.type === 'iframe-console') {
+    addConsoleEntry(e.data.method, e.data.text);
+    return;
+  }
+
+  if (e.data.type === 'iframe-error') {
+    var msg = e.data.message;
+    if (e.data.line) msg += ' (line ' + e.data.line + ')';
+    errorMessages.push(msg);
+
+    var entry = document.createElement('div');
+    entry.className = 'error-entry';
+    entry.textContent = msg;
+    errorList.appendChild(entry);
+
+    errorCount.textContent = errorMessages.length;
+    errorCount.style.display = 'inline';
+  }
 });
 
 /* ═══════════════════════════════════════════
