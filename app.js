@@ -16,24 +16,10 @@ var zCounter    = 100;
 var panels      = {};
 
 /* ═══════════════════════════════════════════
-   Default layout: tiled positions
+   Default layout: delegates to current mode
    ═══════════════════════════════════════════ */
 function defaultLayout() {
-  var w = workspace.offsetWidth;
-  var h = workspace.offsetHeight;
-  var edW = Math.floor(w / 3);
-  var edH = Math.floor(h * 0.45);
-  var pvW = Math.floor(w * 0.65);
-  var pvH = h - edH - 8;
-  var erW = w - pvW - 8;
-
-  return {
-    'panel-html':    { x: 0,          y: 0,       w: edW,          h: edH },
-    'panel-css':     { x: edW,        y: 0,       w: edW,          h: edH },
-    'panel-js':      { x: edW * 2,    y: 0,       w: w - edW * 2,  h: edH },
-    'panel-preview': { x: 0,          y: edH + 4, w: pvW,          h: pvH },
-    'panel-errors':  { x: pvW + 4,    y: edH + 4, w: erW,          h: pvH }
-  };
+  return getPresetLayout(currentLayoutMode);
 }
 
 /* ═══════════════════════════════════════════
@@ -264,6 +250,7 @@ function initDrag(el, header) {
     origY = el.offsetTop;
 
     undockPanel(el);
+    el.classList.add('dragging');
 
     dragOverlay.style.display = 'block';
     dragOverlay.style.cursor = 'grabbing';
@@ -271,14 +258,11 @@ function initDrag(el, header) {
     function onMove(e) {
       el.style.left = (origX + e.clientX - startX) + 'px';
       el.style.top  = (origY + e.clientY - startY) + 'px';
-
-      var wsRect = workspace.getBoundingClientRect();
-      var localX = e.clientX - wsRect.left;
-      var localY = e.clientY - wsRect.top;
       showSnapPreview(getSnapZone(e.clientX, e.clientY, el));
     }
 
     function onUp(e) {
+      el.classList.remove('dragging');
       var zone = getSnapZone(e.clientX, e.clientY, el);
       if (zone) {
         el.style.left   = zone.x + 'px';
@@ -313,6 +297,7 @@ function initResize(el) {
       e.stopPropagation();
 
       undockPanel(el);
+      el.classList.add('dragging');
 
       var cls = handle.className;
       var startX = e.clientX, startY = e.clientY;
@@ -348,6 +333,7 @@ function initResize(el) {
       }
 
       function onUp() {
+        el.classList.remove('dragging');
         dragOverlay.style.display = 'none';
         dragOverlay.style.cursor = '';
         document.removeEventListener('mousemove', onMove);
@@ -399,14 +385,169 @@ function applyLayout(layout) {
 }
 
 /* ═══════════════════════════════════════════
+   Layout presets: top/bottom, left/right, tabs
+   ═══════════════════════════════════════════ */
+var currentLayoutMode = 'top-bottom';
+var activeTab = 'panel-html';
+var tabBar = document.getElementById('tab-bar');
+
+function layoutTopBottom() {
+  var w = workspace.offsetWidth;
+  var h = workspace.offsetHeight;
+  var edW = Math.floor(w / 3);
+  var edH = Math.floor(h * 0.45);
+  var pvW = Math.floor(w * 0.65);
+  var pvH = h - edH - 4;
+  var erW = w - pvW - 4;
+
+  return {
+    'panel-html':    { x: 0,       y: 0,       w: edW,          h: edH },
+    'panel-css':     { x: edW,     y: 0,       w: edW,          h: edH },
+    'panel-js':      { x: edW * 2, y: 0,       w: w - edW * 2,  h: edH },
+    'panel-preview': { x: 0,       y: edH + 4, w: pvW,          h: pvH },
+    'panel-errors':  { x: pvW + 4, y: edH + 4, w: erW,          h: pvH }
+  };
+}
+
+function layoutLeftRight() {
+  var w = workspace.offsetWidth;
+  var h = workspace.offsetHeight;
+  var edW = Math.floor(w * 0.35);
+  var edH = Math.floor(h / 3);
+  var pvW = w - edW - 4;
+  var pvH = Math.floor(h * 0.7);
+  var erH = h - pvH - 4;
+
+  return {
+    'panel-html':    { x: 0,       y: 0,           w: edW, h: edH },
+    'panel-css':     { x: 0,       y: edH,         w: edW, h: edH },
+    'panel-js':      { x: 0,       y: edH * 2,     w: edW, h: h - edH * 2 },
+    'panel-preview': { x: edW + 4, y: 0,           w: pvW, h: pvH },
+    'panel-errors':  { x: edW + 4, y: pvH + 4,     w: pvW, h: erH }
+  };
+}
+
+function layoutTabs() {
+  var w = workspace.offsetWidth;
+  var h = workspace.offsetHeight;
+  var tabH = 32;
+  var edH = Math.floor((h - tabH) * 0.45);
+  var pvW = Math.floor(w * 0.65);
+  var pvH = h - tabH - edH - 4;
+  var erW = w - pvW - 4;
+
+  return {
+    'panel-html':    { x: 0, y: tabH,          w: w,   h: edH },
+    'panel-css':     { x: 0, y: tabH,          w: w,   h: edH },
+    'panel-js':      { x: 0, y: tabH,          w: w,   h: edH },
+    'panel-preview': { x: 0, y: tabH + edH + 4, w: pvW, h: pvH },
+    'panel-errors':  { x: pvW + 4, y: tabH + edH + 4, w: erW, h: pvH }
+  };
+}
+
+function getPresetLayout(mode) {
+  if (mode === 'left-right') return layoutLeftRight();
+  if (mode === 'tabs') return layoutTabs();
+  return layoutTopBottom();
+}
+
+function showTabBar(visible) {
+  tabBar.classList.toggle('visible', visible);
+}
+
+function setActiveTab(tabId) {
+  activeTab = tabId;
+
+  var tabBtns = tabBar.querySelectorAll('.tab-btn');
+  tabBtns.forEach(function(btn) {
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
+  });
+
+  ['panel-html', 'panel-css', 'panel-js'].forEach(function(id) {
+    if (!panels[id]) return;
+    var el = panels[id].el;
+    if (id === tabId) {
+      el.style.display = '';
+      el.style.zIndex = 10;
+    } else {
+      el.style.display = 'none';
+    }
+  });
+}
+
+function restoreAllPanelsVisible() {
+  ['panel-html', 'panel-css', 'panel-js', 'panel-preview', 'panel-errors'].forEach(function(id) {
+    if (!panels[id]) return;
+    panels[id].el.style.display = '';
+  });
+}
+
+function switchLayout(mode) {
+  currentLayoutMode = mode;
+  dockedPanels = {};
+
+  var layoutBtns = document.querySelectorAll('.layout-btn');
+  layoutBtns.forEach(function(btn) {
+    btn.classList.toggle('active', btn.getAttribute('data-layout') === mode);
+  });
+
+  if (mode === 'tabs') {
+    showTabBar(true);
+    var preset = getPresetLayout(mode);
+    restoreAllPanelsVisible();
+    applyLayout(preset);
+    setActiveTab(activeTab);
+  } else {
+    showTabBar(false);
+    restoreAllPanelsVisible();
+    var preset = getPresetLayout(mode);
+    applyLayout(preset);
+  }
+
+  try { localStorage.setItem('css-sandbox-layout-mode', mode); } catch(e) {}
+  saveLayout();
+}
+
+tabBar.addEventListener('click', function(e) {
+  var btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  setActiveTab(btn.getAttribute('data-tab'));
+});
+
+document.querySelectorAll('.layout-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    switchLayout(btn.getAttribute('data-layout'));
+  });
+});
+
+/* ═══════════════════════════════════════════
    Initialize panels
    ═══════════════════════════════════════════ */
 PANELS.forEach(function(def) {
   panels[def.id] = { el: createPanel(def), def: def };
 });
 
-var layout = loadLayout() || defaultLayout();
-applyLayout(layout);
+var savedMode = null;
+try { savedMode = localStorage.getItem('css-sandbox-layout-mode'); } catch(e) {}
+currentLayoutMode = savedMode || 'top-bottom';
+
+var layoutBtns = document.querySelectorAll('.layout-btn');
+layoutBtns.forEach(function(btn) {
+  btn.classList.toggle('active', btn.getAttribute('data-layout') === currentLayoutMode);
+});
+
+var savedLayout = loadLayout();
+if (savedLayout) {
+  applyLayout(savedLayout);
+} else {
+  applyLayout(getPresetLayout(currentLayoutMode));
+}
+
+if (currentLayoutMode === 'tabs') {
+  showTabBar(true);
+  setActiveTab(activeTab);
+}
+
 focusPanel('panel-preview');
 
 /* ═══════════════════════════════════════════
@@ -619,7 +760,7 @@ editorJS.addEventListener('keydown', handleTab);
 document.getElementById('btn-reset').addEventListener('click', function() {
   try { localStorage.removeItem('css-sandbox-layout'); } catch(e) {}
   dockedPanels = {};
-  applyLayout(defaultLayout());
+  switchLayout(currentLayoutMode);
 });
 
 /* ═══════════════════════════════════════════
