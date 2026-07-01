@@ -137,6 +137,37 @@
       border: none;
       background: #fff;
     }
+
+    /* ── Auto-run toggle ── */
+    #toolbar label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-dim);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    #toolbar label input[type="checkbox"] {
+      accent-color: var(--accent);
+    }
+
+    /* ── Error bar ── */
+    #error-bar {
+      padding: 6px 12px;
+      font-size: 11px;
+      line-height: 1.4;
+      background: #45142a;
+      color: #f38ba8;
+      border-top: 1px solid #f38ba8;
+      display: none;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 60px;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -144,6 +175,7 @@
     <div id="toolbar">
       <h1>CSS Sandbox</h1>
       <div class="spacer"></div>
+      <label><input type="checkbox" id="auto-run" checked> Auto-run</label>
       <button id="btn-run">Run</button>
     </div>
 
@@ -165,6 +197,7 @@
     <div id="preview-container">
       <div class="pane-header">Preview</div>
       <iframe id="preview"></iframe>
+      <div id="error-bar"></div>
     </div>
   </div>
 
@@ -174,6 +207,8 @@
     var editorJS   = document.getElementById('editor-js');
     var preview    = document.getElementById('preview');
     var btnRun     = document.getElementById('btn-run');
+    var autoRun    = document.getElementById('auto-run');
+    var errorBar   = document.getElementById('error-bar');
 
     editorHTML.value = '<div class="box">Hover me</div>';
 
@@ -216,18 +251,53 @@
       var css  = editorCSS.value;
       var js   = editorJS.value;
 
+      errorBar.style.display = 'none';
+      errorBar.textContent = '';
+
       var doc = [
         '<!DOCTYPE html>',
         '<html><head><meta charset="UTF-8">',
-        '<style>' + css + '</style>',
-        '</head><body>',
+        '<style>' + css + '<\/style>',
+        '<\/head><body>',
         html,
-        '<script>' + js + '<\/script>',
-        '</body></html>'
+        '<script>',
+        'window.addEventListener("error", function(e) {',
+        '  window.parent.postMessage({ type: "iframe-error", message: e.message, line: e.lineno }, "*");',
+        '});',
+        'try {',
+        js,
+        '} catch(e) {',
+        '  window.parent.postMessage({ type: "iframe-error", message: e.message }, "*");',
+        '}',
+        '<\/script>',
+        '<\/body><\/html>'
       ].join('\n');
 
       preview.srcdoc = doc;
     }
+
+    /* ── Listen for errors from the iframe ── */
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'iframe-error') {
+        errorBar.style.display = 'block';
+        var msg = e.data.message;
+        if (e.data.line) msg += ' (line ' + e.data.line + ')';
+        errorBar.textContent = msg;
+      }
+    });
+
+    /* ── Debounced auto-run ── */
+    var debounceTimer = null;
+
+    function scheduleRun() {
+      if (!autoRun.checked) return;
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(run, 300);
+    }
+
+    editorHTML.addEventListener('input', scheduleRun);
+    editorCSS.addEventListener('input', scheduleRun);
+    editorJS.addEventListener('input', scheduleRun);
 
     btnRun.addEventListener('click', run);
 
