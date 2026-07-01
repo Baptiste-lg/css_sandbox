@@ -14,7 +14,10 @@
       --text:      #cdd6f4;
       --text-dim:  #6c7086;
       --accent:    #89b4fa;
+      --accent-dim:#585b89;
       --border:    #45475a;
+      --error:     #f38ba8;
+      --error-bg:  #45142a;
       --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
     }
 
@@ -32,6 +35,7 @@
       height: 100vh;
     }
 
+    /* ── Toolbar ── */
     #toolbar {
       display: flex;
       align-items: center;
@@ -40,6 +44,8 @@
       background: var(--bg-header);
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
+      z-index: 10000;
+      position: relative;
     }
 
     #toolbar h1 {
@@ -66,79 +72,14 @@
 
     #toolbar button:hover { opacity: 0.85; }
 
-    #editors {
-      display: flex;
-      flex: 1;
-      min-height: 0;
-    }
-
-    .editor-pane {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      border-right: 1px solid var(--border);
-    }
-
-    .editor-pane:last-child { border-right: none; }
-
-    .editor-pane .pane-header {
-      padding: 6px 12px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-dim);
-      background: var(--bg-header);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-
-    .editor-pane textarea {
-      flex: 1;
-      width: 100%;
-      padding: 12px;
+    #toolbar button.secondary {
       background: var(--bg-panel);
-      color: var(--text);
-      border: none;
-      outline: none;
-      resize: none;
-      font-family: var(--font-mono);
-      font-size: 13px;
-      line-height: 1.5;
-      tab-size: 2;
-    }
-
-    .editor-pane textarea::placeholder { color: var(--text-dim); }
-
-    #preview-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      border-top: 2px solid var(--border);
-      min-height: 0;
-    }
-
-    #preview-container .pane-header {
-      padding: 6px 12px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1px;
       color: var(--text-dim);
-      background: var(--bg-header);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
+      border: 1px solid var(--border);
     }
 
-    #preview {
-      flex: 1;
-      width: 100%;
-      border: none;
-      background: #fff;
-    }
+    #toolbar button.secondary:hover { color: var(--text); }
 
-    /* ── Auto-run toggle ── */
     #toolbar label {
       display: flex;
       align-items: center;
@@ -149,24 +90,149 @@
       user-select: none;
     }
 
-    #toolbar label input[type="checkbox"] {
-      accent-color: var(--accent);
+    #toolbar label input[type="checkbox"] { accent-color: var(--accent); }
+
+    /* ── Workspace: contains all floating panels ── */
+    #workspace {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
     }
 
-    /* ── Error bar ── */
-    #error-bar {
-      padding: 6px 12px;
-      font-size: 11px;
-      line-height: 1.4;
-      background: #45142a;
-      color: #f38ba8;
-      border-top: 1px solid #f38ba8;
-      display: none;
-      white-space: pre-wrap;
-      word-break: break-all;
-      max-height: 60px;
-      overflow-y: auto;
+    /* ── Floating panel ── */
+    .panel {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      min-width: 160px;
+      min-height: 100px;
+    }
+
+    .panel.focused {
+      border-color: var(--accent-dim);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--accent-dim);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      height: 32px;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border);
+      cursor: grab;
       flex-shrink: 0;
+      user-select: none;
+    }
+
+    .panel-header:active { cursor: grabbing; }
+
+    .panel-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      flex: 1;
+    }
+
+    .panel.focused .panel-title { color: var(--accent); }
+
+    .panel-body {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel textarea {
+      flex: 1;
+      width: 100%;
+      padding: 10px;
+      background: transparent;
+      color: var(--text);
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.5;
+      tab-size: 2;
+    }
+
+    .panel textarea::placeholder { color: var(--text-dim); }
+
+    .panel iframe {
+      flex: 1;
+      width: 100%;
+      border: none;
+      background: #fff;
+    }
+
+    /* ── Resize handles ── */
+    .resize-handle {
+      position: absolute;
+      z-index: 1;
+    }
+
+    .resize-handle.rh-right  { top: 0; right: -3px; width: 6px; height: 100%; cursor: e-resize; }
+    .resize-handle.rh-bottom { bottom: -3px; left: 0; width: 100%; height: 6px; cursor: s-resize; }
+    .resize-handle.rh-left   { top: 0; left: -3px; width: 6px; height: 100%; cursor: w-resize; }
+    .resize-handle.rh-top    { top: -3px; left: 0; width: 100%; height: 6px; cursor: n-resize; }
+    .resize-handle.rh-br     { bottom: -4px; right: -4px; width: 12px; height: 12px; cursor: se-resize; }
+    .resize-handle.rh-bl     { bottom: -4px; left: -4px; width: 12px; height: 12px; cursor: sw-resize; }
+    .resize-handle.rh-tr     { top: -4px; right: -4px; width: 12px; height: 12px; cursor: ne-resize; }
+    .resize-handle.rh-tl     { top: -4px; left: -4px; width: 12px; height: 12px; cursor: nw-resize; }
+
+    /* ── Error panel styling ── */
+    #panel-errors .panel-header { background: var(--error-bg); }
+    #panel-errors .panel-title { color: var(--error); }
+
+    #panel-errors .error-list {
+      flex: 1;
+      padding: 8px 10px;
+      overflow-y: auto;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--error);
+    }
+
+    #panel-errors .error-list:empty::after {
+      content: 'No errors';
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    .error-entry {
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(243, 139, 168, 0.1);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .error-count {
+      font-size: 10px;
+      background: var(--error);
+      color: var(--bg);
+      border-radius: 8px;
+      padding: 1px 6px;
+      margin-left: 6px;
+      font-weight: 700;
+      display: none;
+    }
+
+    /* ── Drag overlay: blocks iframe pointer events during drag/resize ── */
+    #drag-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 9999;
+      display: none;
     }
   </style>
 </head>
@@ -177,38 +243,276 @@
       <div class="spacer"></div>
       <label><input type="checkbox" id="auto-run" checked> Auto-run</label>
       <button id="btn-run">Run</button>
+      <button id="btn-reset" class="secondary">Reset layout</button>
     </div>
-
-    <div id="editors">
-      <div class="editor-pane">
-        <div class="pane-header">HTML</div>
-        <textarea id="editor-html" spellcheck="false" placeholder="HTML here..."></textarea>
-      </div>
-      <div class="editor-pane">
-        <div class="pane-header">CSS</div>
-        <textarea id="editor-css" spellcheck="false" placeholder="CSS here..."></textarea>
-      </div>
-      <div class="editor-pane">
-        <div class="pane-header">JS</div>
-        <textarea id="editor-js" spellcheck="false" placeholder="JavaScript here..."></textarea>
-      </div>
-    </div>
-
-    <div id="preview-container">
-      <div class="pane-header">Preview</div>
-      <iframe id="preview"></iframe>
-      <div id="error-bar"></div>
+    <div id="workspace">
+      <div id="drag-overlay"></div>
     </div>
   </div>
 
   <script>
+    /* ═══════════════════════════════════════════
+       Panel definitions
+       ═══════════════════════════════════════════ */
+    var PANELS = [
+      { id: 'panel-html',    title: 'HTML',    type: 'editor', editorId: 'editor-html' },
+      { id: 'panel-css',     title: 'CSS',     type: 'editor', editorId: 'editor-css'  },
+      { id: 'panel-js',      title: 'JS',      type: 'editor', editorId: 'editor-js'   },
+      { id: 'panel-preview', title: 'Preview', type: 'preview' },
+      { id: 'panel-errors',  title: 'Errors',  type: 'errors'  }
+    ];
+
+    var workspace   = document.getElementById('workspace');
+    var dragOverlay = document.getElementById('drag-overlay');
+    var autoRunCb   = document.getElementById('auto-run');
+    var zCounter    = 100;
+    var panels      = {};
+
+    /* ═══════════════════════════════════════════
+       Default layout: tiled positions
+       ═══════════════════════════════════════════ */
+    function defaultLayout() {
+      var w = workspace.offsetWidth;
+      var h = workspace.offsetHeight;
+      var edW = Math.floor(w / 3);
+      var edH = Math.floor(h * 0.45);
+      var pvW = Math.floor(w * 0.65);
+      var pvH = h - edH - 8;
+      var erW = w - pvW - 8;
+
+      return {
+        'panel-html':    { x: 0,          y: 0,      w: edW,     h: edH },
+        'panel-css':     { x: edW,        y: 0,      w: edW,     h: edH },
+        'panel-js':      { x: edW * 2,    y: 0,      w: w - edW * 2, h: edH },
+        'panel-preview': { x: 0,          y: edH + 4, w: pvW,    h: pvH },
+        'panel-errors':  { x: pvW + 4,    y: edH + 4, w: erW,    h: pvH }
+      };
+    }
+
+    /* ═══════════════════════════════════════════
+       Panel DOM creation
+       ═══════════════════════════════════════════ */
+    function createPanel(def) {
+      var el = document.createElement('div');
+      el.className = 'panel';
+      el.id = def.id;
+
+      var header = document.createElement('div');
+      header.className = 'panel-header';
+
+      var title = document.createElement('span');
+      title.className = 'panel-title';
+      title.textContent = def.title;
+      header.appendChild(title);
+
+      if (def.type === 'errors') {
+        var badge = document.createElement('span');
+        badge.className = 'error-count';
+        badge.id = 'error-count';
+        badge.textContent = '0';
+        header.appendChild(badge);
+      }
+
+      el.appendChild(header);
+
+      var body = document.createElement('div');
+      body.className = 'panel-body';
+
+      if (def.type === 'editor') {
+        var ta = document.createElement('textarea');
+        ta.id = def.editorId;
+        ta.spellcheck = false;
+        ta.placeholder = def.title + ' here...';
+        body.appendChild(ta);
+      } else if (def.type === 'preview') {
+        var iframe = document.createElement('iframe');
+        iframe.id = 'preview';
+        body.appendChild(iframe);
+      } else if (def.type === 'errors') {
+        var list = document.createElement('div');
+        list.className = 'error-list';
+        list.id = 'error-list';
+        body.appendChild(list);
+      }
+
+      el.appendChild(body);
+
+      ['rh-right', 'rh-bottom', 'rh-left', 'rh-top', 'rh-br', 'rh-bl', 'rh-tr', 'rh-tl'].forEach(function(cls) {
+        var handle = document.createElement('div');
+        handle.className = 'resize-handle ' + cls;
+        el.appendChild(handle);
+      });
+
+      workspace.appendChild(el);
+
+      el.addEventListener('mousedown', function() { focusPanel(def.id); });
+      initDrag(el, header);
+      initResize(el);
+
+      return el;
+    }
+
+    /* ═══════════════════════════════════════════
+       Focus management (z-index stacking)
+       ═══════════════════════════════════════════ */
+    function focusPanel(id) {
+      Object.keys(panels).forEach(function(k) {
+        panels[k].el.classList.remove('focused');
+      });
+      panels[id].el.classList.add('focused');
+      panels[id].el.style.zIndex = ++zCounter;
+    }
+
+    /* ═══════════════════════════════════════════
+       Drag: move panels by their header
+       ═══════════════════════════════════════════ */
+    function initDrag(el, header) {
+      var startX, startY, origX, origY;
+
+      header.addEventListener('mousedown', function(e) {
+        if (e.target.closest('.resize-handle')) return;
+        e.preventDefault();
+        startX = e.clientX;
+        startY = e.clientY;
+        origX = el.offsetLeft;
+        origY = el.offsetTop;
+        dragOverlay.style.display = 'block';
+        dragOverlay.style.cursor = 'grabbing';
+
+        function onMove(e) {
+          el.style.left = (origX + e.clientX - startX) + 'px';
+          el.style.top  = (origY + e.clientY - startY) + 'px';
+        }
+
+        function onUp() {
+          dragOverlay.style.display = 'none';
+          dragOverlay.style.cursor = '';
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          saveLayout();
+        }
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       Resize: 8-directional handles
+       ═══════════════════════════════════════════ */
+    function initResize(el) {
+      var handles = el.querySelectorAll('.resize-handle');
+      var MIN_W = 160, MIN_H = 100;
+
+      handles.forEach(function(handle) {
+        handle.addEventListener('mousedown', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          var cls = handle.className;
+          var startX = e.clientX, startY = e.clientY;
+          var origW = el.offsetWidth, origH = el.offsetHeight;
+          var origL = el.offsetLeft, origT = el.offsetTop;
+
+          var resizeR = cls.indexOf('rh-right') >= 0 || cls.indexOf('rh-br') >= 0 || cls.indexOf('rh-tr') >= 0;
+          var resizeB = cls.indexOf('rh-bottom') >= 0 || cls.indexOf('rh-br') >= 0 || cls.indexOf('rh-bl') >= 0;
+          var resizeL = cls.indexOf('rh-left') >= 0 || cls.indexOf('rh-bl') >= 0 || cls.indexOf('rh-tl') >= 0;
+          var resizeT = cls.indexOf('rh-top') >= 0 || cls.indexOf('rh-tr') >= 0 || cls.indexOf('rh-tl') >= 0;
+
+          dragOverlay.style.display = 'block';
+          dragOverlay.style.cursor = getComputedStyle(handle).cursor;
+
+          function onMove(e) {
+            var dx = e.clientX - startX;
+            var dy = e.clientY - startY;
+
+            if (resizeR) el.style.width  = Math.max(MIN_W, origW + dx) + 'px';
+            if (resizeB) el.style.height = Math.max(MIN_H, origH + dy) + 'px';
+
+            if (resizeL) {
+              var newW = Math.max(MIN_W, origW - dx);
+              el.style.width = newW + 'px';
+              el.style.left  = (origL + origW - newW) + 'px';
+            }
+
+            if (resizeT) {
+              var newH = Math.max(MIN_H, origH - dy);
+              el.style.height = newH + 'px';
+              el.style.top    = (origT + origH - newH) + 'px';
+            }
+          }
+
+          function onUp() {
+            dragOverlay.style.display = 'none';
+            dragOverlay.style.cursor = '';
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            saveLayout();
+          }
+
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        });
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       Layout persistence (localStorage)
+       ═══════════════════════════════════════════ */
+    function saveLayout() {
+      var layout = {};
+      Object.keys(panels).forEach(function(id) {
+        var el = panels[id].el;
+        layout[id] = {
+          x: el.offsetLeft,
+          y: el.offsetTop,
+          w: el.offsetWidth,
+          h: el.offsetHeight
+        };
+      });
+      try { localStorage.setItem('css-sandbox-layout', JSON.stringify(layout)); } catch(e) {}
+    }
+
+    function loadLayout() {
+      try {
+        var saved = localStorage.getItem('css-sandbox-layout');
+        if (saved) return JSON.parse(saved);
+      } catch(e) {}
+      return null;
+    }
+
+    function applyLayout(layout) {
+      Object.keys(layout).forEach(function(id) {
+        if (!panels[id]) return;
+        var el = panels[id].el;
+        var r  = layout[id];
+        el.style.left   = r.x + 'px';
+        el.style.top    = r.y + 'px';
+        el.style.width  = r.w + 'px';
+        el.style.height = r.h + 'px';
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       Initialize panels
+       ═══════════════════════════════════════════ */
+    PANELS.forEach(function(def) {
+      panels[def.id] = { el: createPanel(def), def: def };
+    });
+
+    var layout = loadLayout() || defaultLayout();
+    applyLayout(layout);
+    focusPanel('panel-preview');
+
+    /* ═══════════════════════════════════════════
+       Editor references and default content
+       ═══════════════════════════════════════════ */
     var editorHTML = document.getElementById('editor-html');
     var editorCSS  = document.getElementById('editor-css');
     var editorJS   = document.getElementById('editor-js');
     var preview    = document.getElementById('preview');
-    var btnRun     = document.getElementById('btn-run');
-    var autoRun    = document.getElementById('auto-run');
-    var errorBar   = document.getElementById('error-bar');
+    var errorList  = document.getElementById('error-list');
+    var errorCount = document.getElementById('error-count');
 
     editorHTML.value = '<div class="box">Hover me</div>';
 
@@ -246,13 +550,19 @@
       '});'
     ].join('\n');
 
+    /* ═══════════════════════════════════════════
+       Run: build and inject preview
+       ═══════════════════════════════════════════ */
+    var errorMessages = [];
+
     function run() {
       var html = editorHTML.value;
       var css  = editorCSS.value;
       var js   = editorJS.value;
 
-      errorBar.style.display = 'none';
-      errorBar.textContent = '';
+      errorMessages = [];
+      errorList.innerHTML = '';
+      errorCount.style.display = 'none';
 
       var doc = [
         '<!DOCTYPE html>',
@@ -276,21 +586,32 @@
       preview.srcdoc = doc;
     }
 
-    /* ── Listen for errors from the iframe ── */
+    /* ═══════════════════════════════════════════
+       Error handling from iframe
+       ═══════════════════════════════════════════ */
     window.addEventListener('message', function(e) {
-      if (e.data && e.data.type === 'iframe-error') {
-        errorBar.style.display = 'block';
-        var msg = e.data.message;
-        if (e.data.line) msg += ' (line ' + e.data.line + ')';
-        errorBar.textContent = msg;
-      }
+      if (!e.data || e.data.type !== 'iframe-error') return;
+
+      var msg = e.data.message;
+      if (e.data.line) msg += ' (line ' + e.data.line + ')';
+      errorMessages.push(msg);
+
+      var entry = document.createElement('div');
+      entry.className = 'error-entry';
+      entry.textContent = msg;
+      errorList.appendChild(entry);
+
+      errorCount.textContent = errorMessages.length;
+      errorCount.style.display = 'inline';
     });
 
-    /* ── Debounced auto-run ── */
+    /* ═══════════════════════════════════════════
+       Debounced auto-run
+       ═══════════════════════════════════════════ */
     var debounceTimer = null;
 
     function scheduleRun() {
-      if (!autoRun.checked) return;
+      if (!autoRunCb.checked) return;
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(run, 300);
     }
@@ -299,22 +620,39 @@
     editorCSS.addEventListener('input', scheduleRun);
     editorJS.addEventListener('input', scheduleRun);
 
-    btnRun.addEventListener('click', run);
+    document.getElementById('btn-run').addEventListener('click', run);
 
+    /* ═══════════════════════════════════════════
+       Tab key: insert spaces
+       ═══════════════════════════════════════════ */
     function handleTab(e) {
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        var ta = e.target;
-        var start = ta.selectionStart;
-        var end = ta.selectionEnd;
-        ta.value = ta.value.substring(0, start) + '  ' + ta.value.substring(end);
-        ta.selectionStart = ta.selectionEnd = start + 2;
-      }
+      if (e.key !== 'Tab') return;
+      e.preventDefault();
+      var ta = e.target;
+      var start = ta.selectionStart;
+      var end = ta.selectionEnd;
+      ta.value = ta.value.substring(0, start) + '  ' + ta.value.substring(end);
+      ta.selectionStart = ta.selectionEnd = start + 2;
     }
 
     editorHTML.addEventListener('keydown', handleTab);
     editorCSS.addEventListener('keydown', handleTab);
     editorJS.addEventListener('keydown', handleTab);
+
+    /* ═══════════════════════════════════════════
+       Reset layout button
+       ═══════════════════════════════════════════ */
+    document.getElementById('btn-reset').addEventListener('click', function() {
+      try { localStorage.removeItem('css-sandbox-layout'); } catch(e) {}
+      applyLayout(defaultLayout());
+    });
+
+    /* ═══════════════════════════════════════════
+       Recalculate default layout on resize
+       ═══════════════════════════════════════════ */
+    window.addEventListener('resize', function() {
+      if (!loadLayout()) applyLayout(defaultLayout());
+    });
 
     run();
   </script>
