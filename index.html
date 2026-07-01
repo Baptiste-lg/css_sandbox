@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSS Sandbox</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #1e1e2e;
+      --bg-panel:  #252536;
+      --bg-header: #2a2a3d;
+      --text:      #cdd6f4;
+      --text-dim:  #6c7086;
+      --accent:    #89b4fa;
+      --border:    #45475a;
+      --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      overflow: hidden;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 16px;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #toolbar h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+    }
+
+    #toolbar .spacer { flex: 1; }
+
+    #toolbar button {
+      padding: 6px 14px;
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    #toolbar button:hover { opacity: 0.85; }
+
+    #editors {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .editor-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      border-right: 1px solid var(--border);
+    }
+
+    .editor-pane:last-child { border-right: none; }
+
+    .editor-pane .pane-header {
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .editor-pane textarea {
+      flex: 1;
+      width: 100%;
+      padding: 12px;
+      background: var(--bg-panel);
+      color: var(--text);
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.5;
+      tab-size: 2;
+    }
+
+    .editor-pane textarea::placeholder { color: var(--text-dim); }
+
+    #preview-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-top: 2px solid var(--border);
+      min-height: 0;
+    }
+
+    #preview-container .pane-header {
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #preview {
+      flex: 1;
+      width: 100%;
+      border: none;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="toolbar">
+      <h1>CSS Sandbox</h1>
+      <div class="spacer"></div>
+      <button id="btn-run">Run</button>
+    </div>
+
+    <div id="editors">
+      <div class="editor-pane">
+        <div class="pane-header">HTML</div>
+        <textarea id="editor-html" spellcheck="false" placeholder="HTML here..."></textarea>
+      </div>
+      <div class="editor-pane">
+        <div class="pane-header">CSS</div>
+        <textarea id="editor-css" spellcheck="false" placeholder="CSS here..."></textarea>
+      </div>
+      <div class="editor-pane">
+        <div class="pane-header">JS</div>
+        <textarea id="editor-js" spellcheck="false" placeholder="JavaScript here..."></textarea>
+      </div>
+    </div>
+
+    <div id="preview-container">
+      <div class="pane-header">Preview</div>
+      <iframe id="preview"></iframe>
+    </div>
+  </div>
+
+  <script>
+    var editorHTML = document.getElementById('editor-html');
+    var editorCSS  = document.getElementById('editor-css');
+    var editorJS   = document.getElementById('editor-js');
+    var preview    = document.getElementById('preview');
+    var btnRun     = document.getElementById('btn-run');
+
+    editorHTML.value = '<div class="box">Hover me</div>';
+
+    editorCSS.value = [
+      'body {',
+      '  display: flex;',
+      '  justify-content: center;',
+      '  align-items: center;',
+      '  height: 100vh;',
+      '  margin: 0;',
+      '  background: #1a1a2e;',
+      '  font-family: sans-serif;',
+      '}',
+      '',
+      '.box {',
+      '  padding: 40px 60px;',
+      '  background: #e94560;',
+      '  color: #fff;',
+      '  font-size: 24px;',
+      '  border-radius: 12px;',
+      '  cursor: pointer;',
+      '  transition: transform 0.2s, box-shadow 0.2s;',
+      '}',
+      '',
+      '.box:hover {',
+      '  transform: scale(1.1) rotate(-2deg);',
+      '  box-shadow: 0 8px 30px rgba(233, 69, 96, 0.4);',
+      '}'
+    ].join('\n');
+
+    editorJS.value = [
+      'document.querySelector(".box").addEventListener("click", function() {',
+      '  this.textContent = "Clicked!";',
+      '  this.style.background = "#0f3460";',
+      '});'
+    ].join('\n');
+
+    function run() {
+      var html = editorHTML.value;
+      var css  = editorCSS.value;
+      var js   = editorJS.value;
+
+      var doc = [
+        '<!DOCTYPE html>',
+        '<html><head><meta charset="UTF-8">',
+        '<style>' + css + '</style>',
+        '</head><body>',
+        html,
+        '<script>' + js + '<\/script>',
+        '</body></html>'
+      ].join('\n');
+
+      preview.srcdoc = doc;
+    }
+
+    btnRun.addEventListener('click', run);
+
+    function handleTab(e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        var ta = e.target;
+        var start = ta.selectionStart;
+        var end = ta.selectionEnd;
+        ta.value = ta.value.substring(0, start) + '  ' + ta.value.substring(end);
+        ta.selectionStart = ta.selectionEnd = start + 2;
+      }
+    }
+
+    editorHTML.addEventListener('keydown', handleTab);
+    editorCSS.addEventListener('keydown', handleTab);
+    editorJS.addEventListener('keydown', handleTab);
+
+    run();
+  </script>
+</body>
+</html>
