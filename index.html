@@ -25,9 +25,30 @@
       <button id="btn-run">Run</button>
       <button id="btn-share">Share</button>
       <button id="btn-download">Download</button>
+      <button id="btn-format" class="secondary" title="Format focused editor">Format</button>
+      <button id="btn-import" class="secondary" title="Import from URL">Import</button>
       <button id="btn-new" class="secondary">New</button>
+      <select id="template-select" class="secondary" title="Load template">
+        <option value="">Templates...</option>
+        <option value="Blank">Blank</option>
+        <option value="Flexbox">Flexbox</option>
+        <option value="CSS Grid">CSS Grid</option>
+        <option value="Animation">Animation</option>
+        <option value="Form">Form</option>
+        <option value="Canvas">Canvas</option>
+      </select>
+      <button id="btn-snippets" class="secondary">Snippets</button>
+      <select id="viewport-select" class="secondary" title="Preview viewport">
+        <option value="responsive">Responsive</option>
+        <option value="375x667">Phone (375x667)</option>
+        <option value="768x1024">Tablet (768x1024)</option>
+        <option value="1280x800">Desktop (1280x800)</option>
+      </select>
       <button id="btn-settings" class="secondary">&#9881; Resources</button>
       <button id="btn-reset" class="secondary">Reset layout</button>
+      <button id="btn-theme" class="secondary" title="Toggle theme">Light</button>
+      <span id="perf-indicator" class="perf-badge" style="display:none" title="Large code detected">PERF</span>
+      <label><input type="checkbox" id="clear-on-run"> Keep console</label>
     </div>
 
     <div id="settings-modal" class="modal hidden">
@@ -62,6 +83,31 @@
         </div>
       </div>
     </div>
+    <div id="snippets-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span>My Snippets</span>
+          <button id="snippets-close" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="snippet-save-row">
+            <input type="text" id="snippet-name" placeholder="Snippet name..." spellcheck="false">
+            <button id="snippet-save">Save current</button>
+          </div>
+          <div id="snippets-list"></div>
+        </div>
+      </div>
+    </div>
+    <div id="find-bar" class="hidden">
+      <input type="text" id="find-input" placeholder="Find..." spellcheck="false">
+      <input type="text" id="replace-input" placeholder="Replace..." spellcheck="false">
+      <span id="find-count"></span>
+      <button id="find-prev" title="Previous">&uarr;</button>
+      <button id="find-next" title="Next">&darr;</button>
+      <button id="find-replace-btn">Replace</button>
+      <button id="find-replace-all">All</button>
+      <button id="find-close">&times;</button>
+    </div>
     <div id="workspace">
       <div id="tab-bar">
         <button class="tab-btn active" data-tab="panel-html">HTML</button>
@@ -76,7 +122,9 @@
       <span class="footer-shortcuts">
         <kbd>Ctrl+S</kbd> Run
         <kbd>Ctrl+Shift+C</kbd> Share
-        <kbd>Ctrl+1/2/3</kbd> Focus editor
+        <kbd>Ctrl+1/2/3</kbd> Focus
+        <kbd>Ctrl+F</kbd> Find
+        <kbd>Ctrl+Tab</kbd> Cycle
       </span>
     </footer>
   </div>

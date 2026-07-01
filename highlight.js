@@ -102,6 +102,79 @@ var Highlight = (function() {
 
     var highlightFn = highlighters[lang] || escapeHtml;
 
+    /* Minimap: scaled-down view of the code on the right edge */
+    var minimap = document.createElement('canvas');
+    minimap.className = 'editor-minimap';
+    parent.appendChild(minimap);
+    var mmCtx = minimap.getContext('2d');
+    var MINIMAP_CHAR_W = 1.2;
+    var MINIMAP_LINE_H = 3;
+    var MINIMAP_W = 60;
+
+    function renderMinimap() {
+      var val = textarea.value;
+      var lines = val.split('\n');
+      var dpr = window.devicePixelRatio || 1;
+      minimap.width = MINIMAP_W * dpr;
+      minimap.height = Math.max(lines.length * MINIMAP_LINE_H, parent.offsetHeight) * dpr;
+      minimap.style.width = MINIMAP_W + 'px';
+      minimap.style.height = Math.max(lines.length * MINIMAP_LINE_H, parent.offsetHeight) + 'px';
+      mmCtx.scale(dpr, dpr);
+      mmCtx.clearRect(0, 0, MINIMAP_W, minimap.height / dpr);
+
+      /* Draw viewport indicator */
+      var lineH = parseFloat(getComputedStyle(textarea).lineHeight) || 19.5;
+      var totalH = lines.length * lineH;
+      var visibleRatio = textarea.clientHeight / (totalH || 1);
+      var scrollRatio = textarea.scrollTop / (totalH || 1);
+      var viewH = Math.min(minimap.height / dpr, visibleRatio * lines.length * MINIMAP_LINE_H);
+      var viewY = scrollRatio * lines.length * MINIMAP_LINE_H;
+      mmCtx.fillStyle = 'rgba(137, 180, 250, 0.1)';
+      mmCtx.fillRect(0, viewY, MINIMAP_W, Math.max(viewH, 10));
+
+      /* Draw code lines as colored blocks */
+      mmCtx.globalAlpha = 0.5;
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        var y = i * MINIMAP_LINE_H;
+        for (var j = 0; j < Math.min(line.length, Math.floor(MINIMAP_W / MINIMAP_CHAR_W)); j++) {
+          var ch = line.charAt(j);
+          if (ch === ' ' || ch === '\t') continue;
+          mmCtx.fillStyle = 'var(--text-dim)';
+          mmCtx.fillStyle = '#6c7086';
+          mmCtx.fillRect(j * MINIMAP_CHAR_W, y, MINIMAP_CHAR_W, MINIMAP_LINE_H - 1);
+        }
+      }
+      mmCtx.globalAlpha = 1;
+    }
+
+    minimap.addEventListener('click', function(e) {
+      var rect = minimap.getBoundingClientRect();
+      var y = e.clientY - rect.top;
+      var lineH = parseFloat(getComputedStyle(textarea).lineHeight) || 19.5;
+      var targetLine = Math.floor(y / MINIMAP_LINE_H);
+      textarea.scrollTop = targetLine * lineH - textarea.clientHeight / 2;
+      pre.scrollTop = textarea.scrollTop;
+      gutter.scrollTop = textarea.scrollTop;
+    });
+
+    var mmDragging = false;
+    minimap.addEventListener('mousedown', function(e) {
+      mmDragging = true;
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!mmDragging) return;
+      var rect = minimap.getBoundingClientRect();
+      var y = e.clientY - rect.top;
+      var lineH = parseFloat(getComputedStyle(textarea).lineHeight) || 19.5;
+      var targetLine = Math.floor(y / MINIMAP_LINE_H);
+      textarea.scrollTop = targetLine * lineH - textarea.clientHeight / 2;
+      pre.scrollTop = textarea.scrollTop;
+      gutter.scrollTop = textarea.scrollTop;
+    });
+    document.addEventListener('mouseup', function() { mmDragging = false; });
+
     function update() {
       var val = textarea.value;
       code.innerHTML = highlightFn(val) + '\n';
@@ -116,6 +189,13 @@ var Highlight = (function() {
       pre.scrollTop = textarea.scrollTop;
       pre.scrollLeft = textarea.scrollLeft;
       gutter.scrollTop = textarea.scrollTop;
+
+      if (lines.length > 20) {
+        minimap.style.display = '';
+        renderMinimap();
+      } else {
+        minimap.style.display = 'none';
+      }
     }
 
     textarea.addEventListener('input', update);
@@ -123,6 +203,7 @@ var Highlight = (function() {
       pre.scrollTop = textarea.scrollTop;
       pre.scrollLeft = textarea.scrollLeft;
       gutter.scrollTop = textarea.scrollTop;
+      if (minimap.style.display !== 'none') renderMinimap();
     });
 
     update();
