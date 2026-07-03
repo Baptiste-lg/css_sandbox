@@ -1,0 +1,76 @@
+name: CSS Sandbox CI/CD
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Install linters
+        run: npm install -g htmlhint stylelint stylelint-config-standard eslint
+
+      - name: Create stylelint config
+        run: echo '{ "extends": "stylelint-config-standard" }' > .stylelintrc.json
+
+      - name: Lint HTML
+        run: htmlhint "*.html"
+
+      - name: Lint CSS
+        run: stylelint "*.css" || true
+
+      - name: Lint JavaScript
+        run: npx eslint app.js --no-eslintrc --env browser --env es2021 --parser-options=ecmaVersion:2022 || true
+
+      - name: Validate HTML (W3C)
+        uses: nickersoft/html-validate-action@v2
+        with:
+          files: "*.html"
+        continue-on-error: true
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: quality
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
