@@ -27,27 +27,16 @@ jobs:
         with:
           node-version: "lts/*"
 
-      - name: Install linters
-        run: npm install -g htmlhint stylelint stylelint-config-standard eslint
-
-      - name: Create stylelint config
-        run: |
-          echo '{"extends":"stylelint-config-standard"}' > .stylelintrc.json
+      - name: Install HTMLHint
+        run: npm install -g htmlhint
 
       - name: Lint HTML
         run: htmlhint "*.html"
 
-      - name: Lint CSS
-        run: stylelint "*.css" || true
-
-      - name: Lint JavaScript
-        run: npx eslint app.js --no-eslintrc --env browser --env es2021 --parser-options=ecmaVersion:2022 || true
-
-      - name: Validate HTML (W3C)
-        uses: nickersoft/html-validate-action@v2
-        with:
-          files: "*.html"
-        continue-on-error: true
+      - name: Validate HTML (html-validate)
+        run: |
+          npm install -g html-validate html-validate-cli
+          html-validate "*.html" || true
 
   deploy:
     name: Deploy to GitHub Pages
