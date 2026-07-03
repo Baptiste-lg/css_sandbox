@@ -1,0 +1,28 @@
+# Version control
+.git/
+.github/
+.gitignore
+
+# IDE & editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation
+README.md
+LICENSE
+CHANGELOG.md
+*.md
+
+# Docker (prevent recursive copies)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Node (if linters are run locally)
+node_modules/
+package-lock.json
+.stylelintrc.json
+.eslintrc.json
