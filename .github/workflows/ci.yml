@@ -31,7 +31,8 @@ jobs:
         run: npm install -g htmlhint stylelint stylelint-config-standard eslint
 
       - name: Create stylelint config
-        run: echo '{ "extends": "stylelint-config-standard" }' > .stylelintrc.json
+        run: |
+          echo '{"extends":"stylelint-config-standard"}' > .stylelintrc.json
 
       - name: Lint HTML
         run: htmlhint "*.html"
