@@ -35,7 +35,7 @@ jobs:
 
       - name: Validate HTML (html-validate)
         run: |
-          npm install -g html-validate html-validate-cli
+          npm install -g html-validate
           html-validate "*.html" || true
 
   deploy:
