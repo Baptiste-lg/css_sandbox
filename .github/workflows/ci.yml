@@ -8,16 +8,19 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  quality:
-    name: Code Quality
+  autoformat:
+    name: Auto-format Code
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,20 +30,101 @@ jobs:
         with:
           node-version: "lts/*"
 
-      - name: Install HTMLHint
-        run: npm install -g htmlhint
+      - name: Install Prettier
+        run: npm install -g prettier
+
+      - name: Run Prettier
+        run: prettier --write "*.html" "*.css" "*.js" --ignore-path /dev/null "!lzstring.js"
+
+      - name: Commit formatting fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git diff --quiet || (git add -A && git commit -m "[FIX] auto-format with prettier" && git push)
+
+  quality:
+    name: Code Quality
+    needs: autoformat
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Install linters
+        run: npm install -g htmlhint html-validate eslint stylelint stylelint-config-standard
 
       - name: Lint HTML
         run: htmlhint "*.html"
 
-      - name: Validate HTML (html-validate)
+      - name: Validate HTML
+        run: html-validate "*.html" || true
+
+      - name: Lint CSS
+        run: stylelint "*.css"
+
+      - name: Lint JavaScript
+        run: eslint app.js highlight.js
+
+      - name: Check formatting
         run: |
-          npm install -g html-validate
-          html-validate "*.html" || true
+          npm install -g prettier
+          prettier --check "*.html" "*.css" "*.js" --ignore-path /dev/null "!lzstring.js"
+
+      - name: Check for TODO/FIXME
+        run: |
+          count=$(grep -rn "TODO\|FIXME\|HACK\|XXX" --include="*.js" --include="*.css" --include="*.html" . | wc -l)
+          if [ "$count" -gt 0 ]; then
+            echo "::notice::Found $count TODO/FIXME comments:"
+            grep -rn "TODO\|FIXME\|HACK\|XXX" --include="*.js" --include="*.css" --include="*.html" . || true
+          fi
+
+  security:
+    name: Security & Size Checks
+    needs: autoformat
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify no secrets in source
+        run: |
+          if grep -rn "API_KEY\|SECRET\|PASSWORD\|TOKEN" --include="*.js" --include="*.html" . | grep -v "lzstring.js"; then
+            echo "::warning::Potential secrets found in source code"
+          else
+            echo "No secrets detected"
+          fi
+
+      - name: Check file sizes
+        run: |
+          echo "### File Sizes" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          for f in *.html *.css *.js; do
+            if [ -f "$f" ]; then
+              size=$(stat -c%s "$f")
+              echo "| $f | $(( size / 1024 ))KB |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+      - name: Check for inline styles/scripts
+        run: |
+          count=$(grep -cn 'style=' *.html | awk -F: '{s+=$2} END{print s}')
+          if [ "$count" -gt 0 ]; then
+            echo "::notice::Found $count inline style attributes in HTML"
+          fi
 
   deploy:
     name: Deploy to GitHub Pages
-    needs: quality
+    needs: [quality, security]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     permissions:
