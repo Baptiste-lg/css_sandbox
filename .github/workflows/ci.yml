@@ -34,7 +34,7 @@ jobs:
         run: npm install -g prettier
 
       - name: Run Prettier
-        run: prettier --write "*.html" "*.css" "*.js" --ignore-path /dev/null "!lzstring.js"
+        run: prettier --write "*.html" "*.css" "*.js"
 
       - name: Commit formatting fixes
         run: |
@@ -76,7 +76,7 @@ jobs:
       - name: Check formatting
         run: |
           npm install -g prettier
-          prettier --check "*.html" "*.css" "*.js" --ignore-path /dev/null "!lzstring.js"
+          prettier --check "*.html" "*.css" "*.js"
 
       - name: Check for TODO/FIXME
         run: |
@@ -115,6 +115,14 @@ jobs:
             fi
           done
 
+      - name: Check total bundle size
+        run: |
+          total=$(cat *.html *.css *.js | wc -c)
+          echo "Total bundle: $(( total / 1024 ))KB"
+          if [ "$total" -gt 524288 ]; then
+            echo "::warning::Total bundle exceeds 512KB"
+          fi
+
       - name: Check for inline styles/scripts
         run: |
           count=$(grep -cn 'style=' *.html | awk -F: '{s+=$2} END{print s}')
@@ -122,9 +130,24 @@ jobs:
             echo "::notice::Found $count inline style attributes in HTML"
           fi
 
+  test:
+    name: Smoke Test
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Serve and check page loads
+        run: |
+          python3 -m http.server 8080 &
+          sleep 2
+          curl -f http://localhost:8080/ || exit 1
+          kill %1
+
   deploy:
     name: Deploy to GitHub Pages
-    needs: [quality, security]
+    needs: [quality, security, test]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     permissions:
