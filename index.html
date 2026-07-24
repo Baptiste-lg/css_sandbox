@@ -1,135 +1,206 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CSS Sandbox</title>
-  <meta name="description" content="A minimal live coding sandbox for HTML, CSS, and JS. Share your snippet by sharing the link.">
-  <meta property="og:title" content="CSS Sandbox">
-  <meta property="og:description" content="A minimal live coding sandbox for HTML, CSS, and JS. Share your snippet by sharing the link.">
-  <meta property="og:type" content="website">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%231e1e2e'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%2389b4fa' font-family='monospace'>&lt;/&gt;</text></svg>">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <div id="app">
-    <div id="toolbar">
-      <h1>CSS Sandbox</h1>
-      <div class="spacer"></div>
-      <div class="layout-group">
-        <button class="layout-btn active" data-layout="top-bottom" title="Editors top, preview bottom">&#9776;</button>
-        <button class="layout-btn" data-layout="left-right" title="Editors left, preview right">&#9783;</button>
-        <button class="layout-btn" data-layout="tabs" title="Tabbed editors, preview below">&#9644;</button>
-      </div>
-      <label><input type="checkbox" id="auto-run" checked> Auto-run</label>
-      <button id="btn-run">Run</button>
-      <button id="btn-share">Share</button>
-      <button id="btn-download">Download</button>
-      <button id="btn-format" class="secondary" title="Format focused editor">Format</button>
-      <button id="btn-import" class="secondary" title="Import from URL">Import</button>
-      <button id="btn-new" class="secondary">New</button>
-      <select id="template-select" class="secondary" title="Load template">
-        <option value="">Templates...</option>
-        <option value="Blank">Blank</option>
-        <option value="Flexbox">Flexbox</option>
-        <option value="CSS Grid">CSS Grid</option>
-        <option value="Animation">Animation</option>
-        <option value="Form">Form</option>
-        <option value="Canvas">Canvas</option>
-      </select>
-      <button id="btn-snippets" class="secondary">Snippets</button>
-      <select id="viewport-select" class="secondary" title="Preview viewport">
-        <option value="responsive">Responsive</option>
-        <option value="375x667">Phone (375x667)</option>
-        <option value="768x1024">Tablet (768x1024)</option>
-        <option value="1280x800">Desktop (1280x800)</option>
-      </select>
-      <button id="btn-settings" class="secondary">&#9881; Resources</button>
-      <button id="btn-reset" class="secondary">Reset layout</button>
-      <button id="btn-theme" class="secondary" title="Toggle theme">Light</button>
-      <span id="perf-indicator" class="perf-badge" style="display:none" title="Large code detected">PERF</span>
-      <label><input type="checkbox" id="clear-on-run"> Keep console</label>
-    </div>
-
-    <div id="settings-modal" class="modal hidden">
-      <div class="modal-content">
-        <div class="modal-header">
-          <span>External Resources</span>
-          <button id="settings-close" class="modal-close">&times;</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CSS Sandbox</title>
+    <meta
+      name="description"
+      content="A minimal live coding sandbox for HTML, CSS, and JS. Share your snippet by sharing the link."
+    />
+    <meta property="og:title" content="CSS Sandbox" />
+    <meta
+      property="og:description"
+      content="A minimal live coding sandbox for HTML, CSS, and JS. Share your snippet by sharing the link."
+    />
+    <meta property="og:type" content="website" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='16' fill='%231e1e2e'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%2389b4fa' font-family='monospace'>&lt;/&gt;</text></svg>"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="toolbar">
+        <h1>CSS Sandbox</h1>
+        <div class="spacer"></div>
+        <div class="layout-group">
+          <button
+            class="layout-btn active"
+            data-layout="top-bottom"
+            title="Editors top, preview bottom"
+          >
+            &#9776;
+          </button>
+          <button class="layout-btn" data-layout="left-right" title="Editors left, preview right">
+            &#9783;
+          </button>
+          <button class="layout-btn" data-layout="tabs" title="Tabbed editors, preview below">
+            &#9644;
+          </button>
         </div>
-        <div class="modal-body">
-          <div class="settings-section">
-            <label>External CSS (one URL per line)</label>
-            <textarea id="ext-css" rows="3" spellcheck="false" placeholder="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/css/bootstrap.min.css"></textarea>
+        <label><input type="checkbox" id="auto-run" checked /> Auto-run</label>
+        <button id="btn-run">Run</button>
+        <button id="btn-share">Share</button>
+        <button id="btn-download">Download</button>
+        <button id="btn-format" class="secondary" title="Format focused editor">Format</button>
+        <button id="btn-import" class="secondary" title="Import from URL">Import</button>
+        <button id="btn-new" class="secondary">New</button>
+        <select id="template-select" class="secondary" title="Load template">
+          <option value="">Templates...</option>
+          <option value="Blank">Blank</option>
+          <option value="Flexbox">Flexbox</option>
+          <option value="CSS Grid">CSS Grid</option>
+          <option value="Animation">Animation</option>
+          <option value="Form">Form</option>
+          <option value="Canvas">Canvas</option>
+        </select>
+        <button id="btn-snippets" class="secondary">Snippets</button>
+        <select id="viewport-select" class="secondary" title="Preview viewport">
+          <option value="responsive">Responsive</option>
+          <option value="375x667">Phone (375x667)</option>
+          <option value="768x1024">Tablet (768x1024)</option>
+          <option value="1280x800">Desktop (1280x800)</option>
+        </select>
+        <button id="btn-settings" class="secondary">&#9881; Resources</button>
+        <button id="btn-reset" class="secondary">Reset layout</button>
+        <button id="btn-theme" class="secondary" title="Toggle theme">Light</button>
+        <span
+          id="perf-indicator"
+          class="perf-badge"
+          style="display: none"
+          title="Large code detected"
+          >PERF</span
+        >
+        <label><input type="checkbox" id="clear-on-run" /> Keep console</label>
+      </div>
+
+      <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <span>External Resources</span>
+            <button id="settings-close" class="modal-close">&times;</button>
           </div>
-          <div class="settings-section">
-            <label>External JS (one URL per line)</label>
-            <textarea id="ext-js" rows="3" spellcheck="false" placeholder="https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></textarea>
-          </div>
-          <div class="settings-section">
-            <label>Quick presets</label>
-            <div class="preset-grid">
-              <button class="preset-btn" data-css="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" data-js="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">Bootstrap 5</button>
-              <button class="preset-btn" data-css="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">Pico CSS</button>
-              <button class="preset-btn" data-css="https://cdn.jsdelivr.net/npm/normalize.css@8/normalize.min.css">Normalize</button>
-              <button class="preset-btn" data-js="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js">jQuery</button>
-              <button class="preset-btn" data-js="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js">Alpine.js</button>
-              <button class="preset-btn" data-js="https://cdn.jsdelivr.net/npm/three@0.160/build/three.min.js">Three.js</button>
+          <div class="modal-body">
+            <div class="settings-section">
+              <label>External CSS (one URL per line)</label>
+              <textarea
+                id="ext-css"
+                rows="3"
+                spellcheck="false"
+                placeholder="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/css/bootstrap.min.css"
+              ></textarea>
+            </div>
+            <div class="settings-section">
+              <label>External JS (one URL per line)</label>
+              <textarea
+                id="ext-js"
+                rows="3"
+                spellcheck="false"
+                placeholder="https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"
+              ></textarea>
+            </div>
+            <div class="settings-section">
+              <label>Quick presets</label>
+              <div class="preset-grid">
+                <button
+                  class="preset-btn"
+                  data-css="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+                  data-js="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+                >
+                  Bootstrap 5
+                </button>
+                <button
+                  class="preset-btn"
+                  data-css="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+                >
+                  Pico CSS
+                </button>
+                <button
+                  class="preset-btn"
+                  data-css="https://cdn.jsdelivr.net/npm/normalize.css@8/normalize.min.css"
+                >
+                  Normalize
+                </button>
+                <button
+                  class="preset-btn"
+                  data-js="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"
+                >
+                  jQuery
+                </button>
+                <button
+                  class="preset-btn"
+                  data-js="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"
+                >
+                  Alpine.js
+                </button>
+                <button
+                  class="preset-btn"
+                  data-js="https://cdn.jsdelivr.net/npm/three@0.160/build/three.min.js"
+                >
+                  Three.js
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button id="settings-apply">Apply & Run</button>
-        </div>
-      </div>
-    </div>
-    <div id="snippets-modal" class="modal hidden">
-      <div class="modal-content">
-        <div class="modal-header">
-          <span>My Snippets</span>
-          <button id="snippets-close" class="modal-close">&times;</button>
-        </div>
-        <div class="modal-body">
-          <div class="snippet-save-row">
-            <input type="text" id="snippet-name" placeholder="Snippet name..." spellcheck="false">
-            <button id="snippet-save">Save current</button>
+          <div class="modal-footer">
+            <button id="settings-apply">Apply & Run</button>
           </div>
-          <div id="snippets-list"></div>
         </div>
       </div>
-    </div>
-    <div id="find-bar" class="hidden">
-      <input type="text" id="find-input" placeholder="Find..." spellcheck="false">
-      <input type="text" id="replace-input" placeholder="Replace..." spellcheck="false">
-      <span id="find-count"></span>
-      <button id="find-prev" title="Previous">&uarr;</button>
-      <button id="find-next" title="Next">&darr;</button>
-      <button id="find-replace-btn">Replace</button>
-      <button id="find-replace-all">All</button>
-      <button id="find-close">&times;</button>
-    </div>
-    <div id="workspace">
-      <div id="tab-bar">
-        <button class="tab-btn active" data-tab="panel-html">HTML</button>
-        <button class="tab-btn" data-tab="panel-css">CSS</button>
-        <button class="tab-btn" data-tab="panel-js">JS</button>
+      <div id="snippets-modal" class="modal hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <span>My Snippets</span>
+            <button id="snippets-close" class="modal-close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="snippet-save-row">
+              <input
+                type="text"
+                id="snippet-name"
+                placeholder="Snippet name..."
+                spellcheck="false"
+              />
+              <button id="snippet-save">Save current</button>
+            </div>
+            <div id="snippets-list"></div>
+          </div>
+        </div>
       </div>
-      <div id="drag-overlay"></div>
-      <div id="snap-preview"></div>
+      <div id="find-bar" class="hidden">
+        <input type="text" id="find-input" placeholder="Find..." spellcheck="false" />
+        <input type="text" id="replace-input" placeholder="Replace..." spellcheck="false" />
+        <span id="find-count"></span>
+        <button id="find-prev" title="Previous">&uarr;</button>
+        <button id="find-next" title="Next">&darr;</button>
+        <button id="find-replace-btn">Replace</button>
+        <button id="find-replace-all">All</button>
+        <button id="find-close">&times;</button>
+      </div>
+      <div id="workspace">
+        <div id="tab-bar">
+          <button class="tab-btn active" data-tab="panel-html">HTML</button>
+          <button class="tab-btn" data-tab="panel-css">CSS</button>
+          <button class="tab-btn" data-tab="panel-js">JS</button>
+        </div>
+        <div id="drag-overlay"></div>
+        <div id="snap-preview"></div>
+      </div>
+      <footer id="footer">
+        <span
+          >Made by
+          <a href="https://github.com/Baptiste-lg" target="_blank" rel="noopener">Baptiste</a></span
+        >
+        <span class="footer-shortcuts">
+          <kbd>Ctrl+S</kbd> Run <kbd>Ctrl+Shift+C</kbd> Share <kbd>Ctrl+1/2/3</kbd> Focus
+          <kbd>Ctrl+F</kbd> Find <kbd>Ctrl+Tab</kbd> Cycle
+        </span>
+      </footer>
     </div>
-    <footer id="footer">
-      <span>Made by <a href="https://github.com/Baptiste-lg" target="_blank" rel="noopener">Baptiste</a></span>
-      <span class="footer-shortcuts">
-        <kbd>Ctrl+S</kbd> Run
-        <kbd>Ctrl+Shift+C</kbd> Share
-        <kbd>Ctrl+1/2/3</kbd> Focus
-        <kbd>Ctrl+F</kbd> Find
-        <kbd>Ctrl+Tab</kbd> Cycle
-      </span>
-    </footer>
-  </div>
-  <script src="lzstring.js"></script>
-  <script src="highlight.js"></script>
-  <script src="app.js"></script>
-</body>
+    <script src="lzstring.js"></script>
+    <script src="highlight.js"></script>
+    <script src="app.js"></script>
+  </body>
 </html>

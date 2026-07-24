@@ -13,8 +13,7 @@
    with regex-based rules.
    ═══════════════════════════════════════════ */
 
-var Highlight = (function() {
-
+var Highlight = (function () {
   function escapeHtml(str) {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
@@ -26,15 +25,24 @@ var Highlight = (function() {
   /* ── HTML highlighting ── */
   function highlightHTML(src) {
     var safe = escapeHtml(src);
-    safe = safe.replace(/(&lt;!--[\s\S]*?--&gt;)/g, function(m) { return wrap('comment', m); });
-    safe = safe.replace(/(&lt;\/?)([\w-]+)/g, function(m, bracket, tag) {
+    safe = safe.replace(/(&lt;!--[\s\S]*?--&gt;)/g, function (m) {
+      return wrap('comment', m);
+    });
+    safe = safe.replace(/(&lt;\/?)([\w-]+)/g, function (m, bracket, tag) {
       return wrap('tag', bracket + wrap('tagname', tag));
     });
-    safe = safe.replace(/(\s)([\w-]+)(=)(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;|[\w-]+)/g, function(m, sp, attr, eq, val) {
-      return sp + wrap('attr', attr) + eq + wrap('string', val);
-    });
-    safe = safe.replace(/(\s)([\w-]+)(?=\s|&gt;|\/&gt;)/g, function(m, sp, attr) {
-      if (/^(disabled|checked|readonly|required|autofocus|autoplay|controls|loop|muted|hidden|novalidate|multiple|selected|defer|async|open)$/.test(attr)) {
+    safe = safe.replace(
+      /(\s)([\w-]+)(=)(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;|[\w-]+)/g,
+      function (m, sp, attr, eq, val) {
+        return sp + wrap('attr', attr) + eq + wrap('string', val);
+      }
+    );
+    safe = safe.replace(/(\s)([\w-]+)(?=\s|&gt;|\/&gt;)/g, function (m, sp, attr) {
+      if (
+        /^(disabled|checked|readonly|required|autofocus|autoplay|controls|loop|muted|hidden|novalidate|multiple|selected|defer|async|open)$/.test(
+          attr
+        )
+      ) {
         return sp + wrap('attr', attr);
       }
       return m;
@@ -46,43 +54,86 @@ var Highlight = (function() {
   /* ── CSS highlighting ── */
   function highlightCSS(src) {
     var safe = escapeHtml(src);
-    safe = safe.replace(/(\/\*[\s\S]*?\*\/)/g, function(m) { return wrap('comment', m); });
-    safe = safe.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, function(m) { return wrap('string', m); });
-    safe = safe.replace(/(#[0-9a-fA-F]{3,8})\b/g, function(m) { return wrap('color', m); });
-    safe = safe.replace(/\b(\d+\.?\d*)(px|em|rem|%|vh|vw|s|ms|deg|fr|ch)?\b/g, function(m, num, unit) {
-      return wrap('number', num) + (unit ? wrap('unit', unit) : '');
+    safe = safe.replace(/(\/\*[\s\S]*?\*\/)/g, function (m) {
+      return wrap('comment', m);
     });
-    safe = safe.replace(/([{};:])/g, function(m) { return wrap('punct', m); });
-    safe = safe.replace(/([\w-]+)\s*(?=:)/g, function(m, prop) { return wrap('property', prop); });
-    safe = safe.replace(/(@[\w-]+)/g, function(m) { return wrap('keyword', m); });
-    safe = safe.replace(/((?:^|\n|[};])\s*)((?:[.#:\w*>+~,\s\-\[\]=&quot;'|^$])+?)(\s*\{)/gm, function(m, before, sel, brace) {
-      return before + wrap('selector', sel) + brace;
+    safe = safe.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, function (m) {
+      return wrap('string', m);
     });
+    safe = safe.replace(/(#[0-9a-fA-F]{3,8})\b/g, function (m) {
+      return wrap('color', m);
+    });
+    safe = safe.replace(
+      /\b(\d+\.?\d*)(px|em|rem|%|vh|vw|s|ms|deg|fr|ch)?\b/g,
+      function (m, num, unit) {
+        return wrap('number', num) + (unit ? wrap('unit', unit) : '');
+      }
+    );
+    safe = safe.replace(/([{};:])/g, function (m) {
+      return wrap('punct', m);
+    });
+    safe = safe.replace(/([\w-]+)\s*(?=:)/g, function (m, prop) {
+      return wrap('property', prop);
+    });
+    safe = safe.replace(/(@[\w-]+)/g, function (m) {
+      return wrap('keyword', m);
+    });
+    safe = safe.replace(
+      /((?:^|\n|[};])\s*)((?:[.#:\w*>+~,\s\-\[\]=&quot;'|^$])+?)(\s*\{)/gm,
+      function (m, before, sel, brace) {
+        return before + wrap('selector', sel) + brace;
+      }
+    );
     return safe;
   }
 
   /* ── JS highlighting ── */
-  var JS_KEYWORDS = /\b(var|let|const|function|return|if|else|for|while|do|switch|case|break|continue|new|this|typeof|instanceof|in|of|try|catch|finally|throw|class|extends|super|import|export|default|from|async|await|yield|null|undefined|true|false|void|delete)\b/g;
+  var JS_KEYWORDS =
+    /\b(var|let|const|function|return|if|else|for|while|do|switch|case|break|continue|new|this|typeof|instanceof|in|of|try|catch|finally|throw|class|extends|super|import|export|default|from|async|await|yield|null|undefined|true|false|void|delete)\b/g;
 
   function highlightJS(src) {
     var safe = escapeHtml(src);
-    safe = safe.replace(/(\/\/.*$)/gm, function(m) { return wrap('comment', m); });
-    safe = safe.replace(/(\/\*[\s\S]*?\*\/)/g, function(m) { return wrap('comment', m); });
-    safe = safe.replace(/(`(?:[^`\\]|\\.|\$\{[^}]*\})*`)/g, function(m) { return wrap('string', m); });
-    safe = safe.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, function(m) { return wrap('string', m); });
-    safe = safe.replace(/((?:^|[=(:,;!&|?~^+\-*/%<>{}[\]\n])\s*)(\/(?:[^/\\*\n]|\\.)[^/\\\n]*\/[gimsuy]*)/gm, function(m, before, rx) { return before + wrap('regex', rx); });
-    safe = safe.replace(/\b(\d+\.?\d*(?:e[+-]?\d+)?)\b/gi, function(m) { return wrap('number', m); });
-    safe = safe.replace(JS_KEYWORDS, function(m) { return wrap('keyword', m); });
-    safe = safe.replace(/\b(document|window|console|Math|JSON|Array|Object|String|Number|Boolean|Promise|Set|Map)\b/g, function(m) { return wrap('builtin', m); });
-    safe = safe.replace(/(\.)([\w$]+)\s*(?=\()/g, function(m, dot, fn) { return dot + wrap('function', fn); });
+    safe = safe.replace(/(\/\/.*$)/gm, function (m) {
+      return wrap('comment', m);
+    });
+    safe = safe.replace(/(\/\*[\s\S]*?\*\/)/g, function (m) {
+      return wrap('comment', m);
+    });
+    safe = safe.replace(/(`(?:[^`\\]|\\.|\$\{[^}]*\})*`)/g, function (m) {
+      return wrap('string', m);
+    });
+    safe = safe.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, function (m) {
+      return wrap('string', m);
+    });
+    safe = safe.replace(
+      /((?:^|[=(:,;!&|?~^+\-*/%<>{}[\]\n])\s*)(\/(?:[^/\\*\n]|\\.)[^/\\\n]*\/[gimsuy]*)/gm,
+      function (m, before, rx) {
+        return before + wrap('regex', rx);
+      }
+    );
+    safe = safe.replace(/\b(\d+\.?\d*(?:e[+-]?\d+)?)\b/gi, function (m) {
+      return wrap('number', m);
+    });
+    safe = safe.replace(JS_KEYWORDS, function (m) {
+      return wrap('keyword', m);
+    });
+    safe = safe.replace(
+      /\b(document|window|console|Math|JSON|Array|Object|String|Number|Boolean|Promise|Set|Map)\b/g,
+      function (m) {
+        return wrap('builtin', m);
+      }
+    );
+    safe = safe.replace(/(\.)([\w$]+)\s*(?=\()/g, function (m, dot, fn) {
+      return dot + wrap('function', fn);
+    });
     return safe;
   }
 
   /* ── Public API ── */
   var highlighters = {
     html: highlightHTML,
-    css:  highlightCSS,
-    js:   highlightJS
+    css: highlightCSS,
+    js: highlightJS,
   };
 
   function createEditor(textarea, lang) {
@@ -148,7 +199,7 @@ var Highlight = (function() {
       mmCtx.globalAlpha = 1;
     }
 
-    minimap.addEventListener('click', function(e) {
+    minimap.addEventListener('click', function (e) {
       var rect = minimap.getBoundingClientRect();
       var y = e.clientY - rect.top;
       var lineH = parseFloat(getComputedStyle(textarea).lineHeight) || 19.5;
@@ -159,11 +210,11 @@ var Highlight = (function() {
     });
 
     var mmDragging = false;
-    minimap.addEventListener('mousedown', function(e) {
+    minimap.addEventListener('mousedown', function (e) {
       mmDragging = true;
       e.preventDefault();
     });
-    document.addEventListener('mousemove', function(e) {
+    document.addEventListener('mousemove', function (e) {
       if (!mmDragging) return;
       var rect = minimap.getBoundingClientRect();
       var y = e.clientY - rect.top;
@@ -173,7 +224,9 @@ var Highlight = (function() {
       pre.scrollTop = textarea.scrollTop;
       gutter.scrollTop = textarea.scrollTop;
     });
-    document.addEventListener('mouseup', function() { mmDragging = false; });
+    document.addEventListener('mouseup', function () {
+      mmDragging = false;
+    });
 
     function update() {
       var val = textarea.value;
@@ -199,7 +252,7 @@ var Highlight = (function() {
     }
 
     textarea.addEventListener('input', update);
-    textarea.addEventListener('scroll', function() {
+    textarea.addEventListener('scroll', function () {
       pre.scrollTop = textarea.scrollTop;
       pre.scrollLeft = textarea.scrollLeft;
       gutter.scrollTop = textarea.scrollTop;
