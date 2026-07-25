@@ -363,7 +363,7 @@ body {
   color: var(--text);
   background: transparent;
   white-space: pre-wrap;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
   overflow: auto;
   pointer-events: none;
 }
@@ -393,7 +393,7 @@ body {
   line-height: 1.5;
   tab-size: 2;
   white-space: pre-wrap;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
   overflow: auto;
   z-index: 2;
 }
