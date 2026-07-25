@@ -30,17 +30,23 @@ jobs:
         with:
           node-version: "lts/*"
 
-      - name: Install Prettier
-        run: npm install -g prettier
+      - name: Install formatters & linters
+        run: npm install -g prettier stylelint stylelint-config-standard eslint
 
       - name: Run Prettier
         run: prettier --write "*.html" "*.css" "*.js"
+
+      - name: Run Stylelint auto-fix
+        run: stylelint --fix "*.css" || true
+
+      - name: Run ESLint auto-fix
+        run: eslint --fix app.js highlight.js || true
 
       - name: Commit formatting fixes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git diff --quiet || (git add -A && git commit -m "[FIX] auto-format with prettier" && git push)
+          git diff --quiet || (git add -A && git commit -m "[FIX] auto-format with prettier, stylelint, eslint" && git push)
 
   quality:
     name: Code Quality
