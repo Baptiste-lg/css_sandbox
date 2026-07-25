@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this project, please cite it as below."
+type: software
+title: "CSS Sandbox"
+version: 1.0.0
+date-released: 2026-07-25
+url: "https://github.com/Baptiste-lg/css_sandbox"
+repository-code: "https://github.com/Baptiste-lg/css_sandbox"
+license: MIT
+authors:
+  - family-names: "Baptiste"
+    alias: "Baptiste-lg"
+keywords:
+  - html
+  - css
+  - javascript
+  - sandbox
+  - live-coding
+  - vanilla-js
