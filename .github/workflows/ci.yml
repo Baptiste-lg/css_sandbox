@@ -31,7 +31,7 @@ jobs:
           node-version: "lts/*"
 
       - name: Install formatters & linters
-        run: npm install -g prettier stylelint stylelint-config-standard eslint globals
+        run: npm install -g prettier stylelint stylelint-config-standard eslint
 
       - name: Run Prettier
         run: prettier --write "*.html" "*.css" "*.js"
@@ -65,7 +65,7 @@ jobs:
           node-version: "lts/*"
 
       - name: Install linters
-        run: npm install -g htmlhint html-validate eslint globals stylelint stylelint-config-standard
+        run: npm install -g htmlhint html-validate eslint stylelint stylelint-config-standard
 
       - name: Lint HTML
         run: htmlhint "*.html"
