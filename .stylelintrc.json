@@ -13,8 +13,8 @@
     "color-hex-length": null,
     "declaration-block-no-redundant-longhand-properties": null,
     "media-feature-range-notation": null,
-    "declaration-property-value-keyword-no-deprecated": "warn",
-    "property-no-deprecated": "warn",
-    "no-duplicate-selectors": "warn"
+    "declaration-property-value-keyword-no-deprecated": [true, { "severity": "warning" }],
+    "property-no-deprecated": [true, { "severity": "warning" }],
+    "no-duplicate-selectors": [true, { "severity": "warning" }]
   }
 }
