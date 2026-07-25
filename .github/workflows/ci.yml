@@ -151,9 +151,30 @@ jobs:
           curl -f http://localhost:8080/ || exit 1
           kill %1
 
+  lighthouse:
+    name: Lighthouse Audit
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Serve locally
+        run: |
+          python3 -m http.server 8080 &
+          sleep 2
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: |
+            http://localhost:8080/
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
   deploy:
     name: Deploy to GitHub Pages
-    needs: [quality, security, test]
+    needs: [quality, security, test, lighthouse]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     permissions:
