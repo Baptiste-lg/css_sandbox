@@ -14,7 +14,7 @@ export default [
     rules: {
       'no-unused-vars': 'warn',
       'no-undef': 'warn',
-      'eqeqeq': 'warn',
+      eqeqeq: 'warn',
       'no-console': 'off',
     },
   },
