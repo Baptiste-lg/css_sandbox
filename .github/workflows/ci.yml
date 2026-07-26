@@ -136,9 +136,31 @@ jobs:
             echo "::notice::Found $count inline style attributes in HTML"
           fi
 
+  unit-test:
+    name: Unit Tests
+    needs: autoformat
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
   test:
     name: Smoke Test
-    needs: quality
+    needs: [quality, unit-test]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -174,7 +196,7 @@ jobs:
 
   deploy:
     name: Deploy to GitHub Pages
-    needs: [quality, security, test, lighthouse]
+    needs: [quality, security, test, unit-test, lighthouse]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     permissions:
