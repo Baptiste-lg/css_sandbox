@@ -21,3 +21,7 @@ Desktop.ini
 # Logs
 *.log
 npm-debug.log*
+
+# Dev artifacts
+PLAN.md
+main
