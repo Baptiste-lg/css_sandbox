@@ -263,5 +263,12 @@ var Highlight = (function () {
     return { update: update };
   }
 
-  return { createEditor: createEditor };
+  return {
+    createEditor: createEditor,
+    escapeHtml: escapeHtml,
+    wrap: wrap,
+    highlightHTML: highlightHTML,
+    highlightCSS: highlightCSS,
+    highlightJS: highlightJS,
+  };
 })();
