@@ -10,31 +10,38 @@ if (bodyMatch) {
   document.body.innerHTML = bodyMatch[1].replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
 }
 
-// jsdom doesn't support iframe srcdoc rendering — stub contentWindow
+// Stub canvas getContext — jsdom doesn't implement it, minimap needs it
+const noop = () => {};
+const ctxStub = {
+  scale: noop, clearRect: noop, fillRect: noop, beginPath: noop, arc: noop,
+  fill: noop, stroke: noop, moveTo: noop, lineTo: noop,
+  fillStyle: '', strokeStyle: '', globalAlpha: 1, font: '',
+  measureText: () => ({ width: 0 }),
+};
+HTMLCanvasElement.prototype.getContext = function () { return ctxStub; };
+
+// Stub iframe srcdoc — create a minimal fake contentWindow per iframe
+// (returning `window` itself causes infinite recursion on jsdom teardown)
 Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
   get() {
-    return window;
+    if (!this._fakeContentWindow) {
+      this._fakeContentWindow = {
+        postMessage: noop,
+        close: noop,
+        document: { write: noop, close: noop, open: noop },
+      };
+    }
+    return this._fakeContentWindow;
   },
   configurable: true,
 });
 
-// jsdom doesn't implement getComputedStyle fully — stub lineHeight
-const origGetComputedStyle = window.getComputedStyle;
-window.getComputedStyle = function (el) {
-  const style = origGetComputedStyle.call(window, el);
-  return new Proxy(style, {
-    get(target, prop) {
-      if (prop === 'lineHeight') return '19.5px';
-      return target[prop];
-    },
-  });
-};
+// Evaluate scripts in global scope using indirect eval
+const indirectEval = eval;
 
-// Evaluate scripts in order against the global window
 function loadScript(filename) {
   const code = readFileSync(resolve(root, filename), 'utf-8');
-  const fn = new Function(code);
-  fn.call(window);
+  indirectEval(code);
 }
 
 loadScript('lzstring.js');

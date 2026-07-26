@@ -48,7 +48,7 @@ describe('Find and Replace', () => {
       ta.selectionStart = 13; // after "Hello World h"
       findInput.value = 'hello';
       doFind();
-      expect(findIndex).toBe(1); // second match "hello" at position 12
+      expect(findIndex).toBe(2); // third match "HELLO" at position 18
     });
 
     it('updates find count text', () => {
