@@ -28,7 +28,7 @@ jobs:
 
       # Set up Docker Buildx for advanced build features (layer caching, multi-platform)
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # Authenticate with GitHub Container Registry using the automatic GITHUB_TOKEN
       - name: Log in to the Container registry
