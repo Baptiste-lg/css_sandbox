@@ -17,10 +17,18 @@ describe('rectsOverlap', () => {
     expect(rectsOverlap(a, b)).toBe(true);
   });
 
-  it('returns true for adjacent rects within tolerance (8px)', () => {
+  it('returns false for rects overlapping less than tolerance (8px)', () => {
+    // tolerance=8 means overlap must exceed 8px to count
     const a = { x: 0, y: 0, w: 100, h: 100 };
-    const b = { x: 105, y: 0, w: 100, h: 100 };
-    // gap is 5px, tolerance is 8, so should overlap
+    const b = { x: 95, y: 0, w: 100, h: 100 };
+    // only 5px overlap, less than 8px tolerance
+    expect(rectsOverlap(a, b)).toBe(false);
+  });
+
+  it('returns true for rects overlapping more than tolerance', () => {
+    const a = { x: 0, y: 0, w: 100, h: 100 };
+    const b = { x: 90, y: 0, w: 100, h: 100 };
+    // 10px overlap, exceeds 8px tolerance
     expect(rectsOverlap(a, b)).toBe(true);
   });
 
