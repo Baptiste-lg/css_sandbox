@@ -54,7 +54,7 @@ jobs:
       # Build the image using the Dockerfile and push it to GHCR
       # Uses layer caching via GitHub Actions cache to speed up builds
       - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true
